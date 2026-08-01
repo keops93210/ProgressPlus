@@ -1,3 +1,4 @@
+import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   Alert,
@@ -38,12 +39,8 @@ export default function Workout() {
 
     try {
       setLoading(true);
-
       const data = await getPrograms(user.id);
-
       setPrograms(data ?? []);
-    } catch (error) {
-      console.error(error);
     } finally {
       setLoading(false);
     }
@@ -61,22 +58,15 @@ export default function Workout() {
     }
 
     try {
-      const result = await createProgram(user.id, name);
-
-      console.log("Programme créé :", result);
-
-      Alert.alert("Succès", "Programme créé !");
+      await createProgram(user.id, name);
 
       setName("");
 
       await loadPrograms();
-    } catch (error: any) {
-      console.error(error);
 
-      Alert.alert(
-        "Erreur Supabase",
-        JSON.stringify(error, null, 2)
-      );
+      Alert.alert("Succès", "Programme créé !");
+    } catch (error: any) {
+      Alert.alert("Erreur", error.message);
     }
   }
 
@@ -85,10 +75,7 @@ export default function Workout() {
       "Supprimer",
       "Supprimer ce programme ?",
       [
-        {
-          text: "Annuler",
-          style: "cancel",
-        },
+        { text: "Annuler", style: "cancel" },
         {
           text: "Supprimer",
           style: "destructive",
@@ -130,9 +117,20 @@ export default function Workout() {
         onRefresh={loadPrograms}
         renderItem={({ item }) => (
           <Card>
-            <Text style={styles.program}>
-              {item.name}
-            </Text>
+            <TouchableOpacity
+              onPress={() =>
+                router.push({
+                  pathname: "/(app)/program/[id]",
+                  params: {
+                    id: item.id,
+                  },
+                })
+              }
+            >
+              <Text style={styles.program}>
+                {item.name}
+              </Text>
+            </TouchableOpacity>
 
             <TouchableOpacity
               onPress={() => handleDelete(item.id)}
