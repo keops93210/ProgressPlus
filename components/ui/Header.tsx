@@ -1,45 +1,69 @@
-import { StyleSheet, Text, View } from "react-native";
+import { ReactNode } from "react";
+import {
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
 import Colors from "@/constants/colors";
 
-export default function Header() {
+interface HeaderProps {
+  title: string;
+  subtitle?: string;
+  right?: ReactNode;
+}
+
+export default function Header({
+  title,
+  subtitle,
+  right,
+}: HeaderProps) {
   return (
     <View style={styles.container}>
-      <Text style={styles.logo}>P+</Text>
+      <View style={styles.left}>
+        <Text style={styles.title}>
+          {title}
+        </Text>
 
-      <Text style={styles.title}>
-        Progress+
-      </Text>
+        {subtitle ? (
+          <Text style={styles.subtitle}>
+            {subtitle}
+          </Text>
+        ) : null}
+      </View>
+
+      {right ? (
+        <View>
+          {right}
+        </View>
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 16,
-
     flexDirection: "row",
-
+    justifyContent: "space-between",
     alignItems: "center",
+
+    marginBottom: 24,
   },
 
-  logo: {
-    color: Colors.primary,
-
-    fontSize: 24,
-
-    fontWeight: "900",
-
-    marginRight: 12,
+  left: {
+    flex: 1,
   },
 
   title: {
     color: Colors.text,
-
-    fontSize: 22,
-
+    fontSize: 34,
     fontWeight: "800",
+  },
+
+  subtitle: {
+    marginTop: 6,
+
+    color: Colors.textSecondary,
+    fontSize: 15,
   },
 });
