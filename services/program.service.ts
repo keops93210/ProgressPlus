@@ -97,10 +97,15 @@ export async function getProgramExercises(
 ) {
   const { data, error } = await supabase
     .from("program_exercises")
-    .select(`
-      *,
-      exercises (*)
-    `)
+.select(`
+  *,
+  exercises (
+    id,
+    name,
+    primary_muscle,
+    equipment
+  )
+`)
     .eq("program_id", programId)
     .order("position");
 

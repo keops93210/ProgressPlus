@@ -1,11 +1,11 @@
-import { Trash2 } from "lucide-react-native";
+import ExerciseCard from "@/components/exercise/ExerciseCard";
+import { useFocusEffect } from "@react-navigation/native";
 import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   FlatList,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -32,20 +32,27 @@ export default function ProgramScreen() {
   const [exercises, setExercises] =
     useState<ProgramExercise[]>([]);
 
-  useEffect(() => {
+    useFocusEffect(
+  useCallback(() => {
     load();
-  }, []);
+  }, [id])
+);
 
-  async function load() {
-    if (!id) return;
+async function load() {
+  if (!id) return;
 
-    const programData = await getProgram(id);
-    setProgram(programData);
+  console.log("ID reçu =", id);
 
-    const exerciseData = await getProgramExercises(id);
-    setExercises(exerciseData ?? []);
-  }
+  const programData = await getProgram(id);
+  console.log("PROGRAM =", programData);
 
+  setProgram(programData);
+
+  const exerciseData = await getProgramExercises(id);
+  console.log("EXERCISES =", exerciseData);
+
+  setExercises(exerciseData ?? []);
+}
   async function handleDeleteExercise(
     exerciseId: string
   ) {
@@ -68,7 +75,6 @@ export default function ProgramScreen() {
             <Text style={styles.statValue}>
               {exercises.length}
             </Text>
-
             <Text style={styles.statLabel}>
               Exercices
             </Text>
@@ -81,7 +87,6 @@ export default function ProgramScreen() {
                 0
               )}
             </Text>
-
             <Text style={styles.statLabel}>
               Séries
             </Text>
@@ -95,7 +100,6 @@ export default function ProgramScreen() {
               )}{" "}
               min
             </Text>
-
             <Text style={styles.statLabel}>
               Durée
             </Text>
@@ -120,38 +124,14 @@ export default function ProgramScreen() {
         style={{ marginTop: 20 }}
         data={exercises}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <Card>
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <TouchableOpacity
-                style={{ flex: 1 }}
-              >
-                <Text style={styles.exercise}>
-                  {item.exercises.name}
-                </Text>
-
-                <Text style={styles.details}>
-                  {item.sets} séries •{" "}
-                  {item.min_reps}-{item.max_reps} reps
-                </Text>
-              </TouchableOpacity>
-
-              <Trash2
-                size={22}
-                color="#ff5555"
-                onPress={() =>
-                  handleDeleteExercise(item.id)
-                }
-              />
-            </View>
-          </Card>
-        )}
+renderItem={({ item }) => (
+  <ExerciseCard
+    exercise={item}
+    onDelete={() =>
+      handleDeleteExercise(item.id)
+    }
+  />
+)}
         ListEmptyComponent={
           <Card>
             <View style={styles.emptyContainer}>
@@ -177,11 +157,18 @@ export default function ProgramScreen() {
         }}
       />
 
-      <BottomButton
-        title="COMMENCER LA SÉANCE"
-        onPress={() => {}}
-        disabled={exercises.length === 0}
-      />
+<BottomButton
+  title="COMMENCER LA SÉANCE"
+  onPress={() =>
+    router.push({
+      pathname: "/workout-session",
+      params: {
+        programId: String(id),
+      },
+    })
+  }
+  disabled={exercises.length === 0}
+/>
     </SafeAreaView>
   );
 }
@@ -211,16 +198,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 
-  exercise: {
-    color: Colors.text,
-    fontSize: 18,
-    fontWeight: "700",
-  },
-
-  details: {
-    color: Colors.primary,
-    marginTop: 6,
-  },
 
   emptyContainer: {
     alignItems: "center",

@@ -77,3 +77,23 @@ export async function getWorkoutSession(
 
   return data;
 }
+export async function getWorkoutExercises(
+  programId: string
+) {
+  const { data, error } = await supabase
+    .from("program_exercises")
+    .select(`
+      *,
+      exercises (*)
+    `)
+    .eq("program_id", programId)
+    .order("position");
+
+  console.log("PROGRAM ID =", programId);
+  console.log("DATA =", data);
+  console.log("ERROR =", error);
+
+  if (error) throw error;
+
+  return data;
+}
