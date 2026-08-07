@@ -1,7 +1,5 @@
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
-
 import Card from "@/components/ui/Card";
-import Colors from "@/constants/colors";
+import Counter from "@/components/ui/Counter";
 
 interface WorkoutRepsCardProps {
   reps: number;
@@ -16,65 +14,12 @@ export default function WorkoutRepsCard({
 }: WorkoutRepsCardProps) {
   return (
     <Card>
-      <Text style={styles.title}>Répétitions</Text>
-
-      <View style={styles.row}>
-        <TouchableOpacity
-          style={styles.button}
-          onPress={onDecrease}
-        >
-          <Text style={styles.buttonText}>−</Text>
-        </TouchableOpacity>
-
-        <Text style={styles.reps}>
-          {reps}
-        </Text>
-
-        <TouchableOpacity
-          style={styles.button}
-          onPress={onIncrease}
-        >
-          <Text style={styles.buttonText}>+</Text>
-        </TouchableOpacity>
-      </View>
+      <Counter
+        title="Répétitions"
+        value={reps}
+        onIncrease={onIncrease}
+        onDecrease={onDecrease}
+      />
     </Card>
   );
 }
-
-const styles = StyleSheet.create({
-  title: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: Colors.textSecondary,
-    marginBottom: 18,
-  },
-
-  row: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-
-  button: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    backgroundColor: Colors.primary,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  buttonText: {
-    fontSize: 30,
-    fontWeight: "800",
-    color: "#fff",
-  },
-
-  reps: {
-    flex: 1,
-    textAlign: "center",
-    fontSize: 34,
-    fontWeight: "800",
-    color: Colors.text,
-  },
-});
