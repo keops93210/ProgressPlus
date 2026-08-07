@@ -195,9 +195,19 @@ return (
       showsVerticalScrollIndicator={false}
       contentContainerStyle={styles.content}
     >
-{isResting && (
-  <WorkoutRestCard
-    time={formatTime(restTime)}
+    {isResting && (
+<WorkoutRestCard
+  time={formatTime(restTime)}
+  onAdd15={() =>
+    setRestTime((t) => t + 15)
+  }
+  onRemove15={() =>
+    setRestTime((t) => Math.max(0, t - 15))
+  }
+  onSkip={() => {
+    setIsResting(false);
+    setRestTime(120);
+  }}
   />
 )}
 
