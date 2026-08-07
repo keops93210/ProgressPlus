@@ -24,11 +24,58 @@ export function useWorkoutSession() {
 
   const [reps, setReps] = useState(8);
 
-  const loadWorkout = useCallback(async () => {}, []);
+  const loadWorkout = useCallback(
+  async (userId: string, programId: string) => {
+    try {
+      setLoading(true);
 
-  const validateSet = useCallback(async () => {}, []);
+      const data = await getWorkoutExercises(programId);
 
-  const finishWorkout = useCallback(async () => {}, []);
+      setExercises(data ?? []);
+
+      const session = await startWorkoutSession(
+        userId,
+        programId
+      );
+
+      setSessionId(session.id);
+    } finally {
+      setLoading(false);
+    }
+  },
+  []
+);
+
+const validateSet = useCallback(
+  async (
+    exercise: ProgramExercise
+  ) => {
+    if (!sessionId) return;
+
+    await saveWorkoutSet(
+      sessionId,
+      exercise.exercise_id,
+      currentSet,
+      weight,
+      reps
+    );
+  },
+  [sessionId, currentSet, weight, reps]
+);
+
+const finishWorkout = useCallback(
+  async () => {
+    if (!sessionId) return;
+
+    await finishWorkoutSession(
+      sessionId,
+      0,
+      0,
+      0
+    );
+  },
+  [sessionId]
+);;
 
   return {
     loading,
