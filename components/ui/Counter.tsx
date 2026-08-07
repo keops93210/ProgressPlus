@@ -1,7 +1,7 @@
-import { StyleSheet, Text, View } from "react-native";
-import CounterButton from "./CounterButton";
-
 import Colors from "@/constants/colors";
+import { StyleSheet, Text, View } from "react-native";
+import AnimatedNumber from "./AnimatedNumber";
+import CounterButton from "./CounterButton";
 
 interface CounterProps {
   title: string;
@@ -30,10 +30,10 @@ export default function Counter({
   onPress={onIncrease}
 />
 
-        <Text style={styles.value}>
-          {value}
-          {suffix ? ` ${suffix}` : ""}
-        </Text>
+<AnimatedNumber
+  value={value}
+  suffix={suffix}
+/>
 
 <CounterButton
   label="−"
@@ -56,12 +56,5 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-  },
-  value: {
-    flex: 1,
-    textAlign: "center",
-    fontSize: 34,
-    fontWeight: "800",
-    color: Colors.text,
   },
 });
