@@ -1,22 +1,21 @@
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
-
 import Card from "@/components/ui/Card";
 import Colors from "@/constants/colors";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
-interface WorkoutRepsCardProps {
-  reps: number;
+interface WorkoutWeightCardProps {
+  weight: number;
   onIncrease: () => void;
   onDecrease: () => void;
 }
 
-export default function WorkoutRepsCard({
-  reps,
+export default function WorkoutWeightCard({
+  weight,
   onIncrease,
   onDecrease,
-}: WorkoutRepsCardProps) {
+}: WorkoutWeightCardProps) {
   return (
     <Card>
-      <Text style={styles.title}>Répétitions</Text>
+      <Text style={styles.title}>Poids</Text>
 
       <View style={styles.row}>
         <TouchableOpacity
@@ -26,8 +25,8 @@ export default function WorkoutRepsCard({
           <Text style={styles.buttonText}>−</Text>
         </TouchableOpacity>
 
-        <Text style={styles.reps}>
-          {reps}
+        <Text style={styles.weight}>
+          {weight} kg
         </Text>
 
         <TouchableOpacity
@@ -70,7 +69,7 @@ const styles = StyleSheet.create({
     color: "#fff",
   },
 
-  reps: {
+  weight: {
     flex: 1,
     textAlign: "center",
     fontSize: 34,
