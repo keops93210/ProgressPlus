@@ -22,7 +22,6 @@ export default function WelcomeScreen() {
         </View>
 
         <Text style={styles.title}>Progress+</Text>
-
         <Text style={styles.subtitle}>Every rep counts.</Text>
       </View>
 
@@ -59,13 +58,6 @@ export default function WelcomeScreen() {
         >
           <UserPlus size={22} color={Colors.primary} strokeWidth={2.4} />
           <Text style={styles.outlineButtonText}>Créer un compte</Text>
-        </Pressable>
-
-        <Pressable
-          style={styles.guestButton}
-          onPress={() => router.replace("/(app)")}
-        >
-          <Text style={styles.guest}>Continuer en invité</Text>
         </Pressable>
       </View>
     </View>
@@ -160,17 +152,5 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.72,
     transform: [{ scale: 0.99 }],
-  },
-
-  guestButton: {
-    alignItems: "center",
-    paddingVertical: 8,
-    marginTop: 2,
-  },
-
-  guest: {
-    color: Colors.primary,
-    fontSize: 16,
-    fontWeight: "600",
   },
 });
