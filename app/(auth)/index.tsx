@@ -1,6 +1,9 @@
-import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import { Dumbbell } from "lucide-react-native";
+import {
+  Dumbbell,
+  LogIn,
+  UserPlus,
+} from "lucide-react-native";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import Button from "@/components/ui/Button";
@@ -8,14 +11,11 @@ import Colors from "@/constants/colors";
 
 export default function WelcomeScreen() {
   return (
-    <LinearGradient
-      colors={["#0F1113", "#15191D", "#0F1113"]}
-      style={styles.container}
-    >
+    <View style={styles.container}>
       <View style={styles.logoContainer}>
         <View style={styles.logoCircle}>
           <Dumbbell
-            size={42}
+            size={44}
             color={Colors.primary}
             strokeWidth={2.5}
           />
@@ -23,9 +23,7 @@ export default function WelcomeScreen() {
 
         <Text style={styles.title}>Progress+</Text>
 
-        <Text style={styles.subtitle}>
-          Every rep counts.
-        </Text>
+        <Text style={styles.subtitle}>Every rep counts.</Text>
       </View>
 
       <View style={styles.buttons}>
@@ -34,33 +32,54 @@ export default function WelcomeScreen() {
           onPress={() => router.push("/(auth)/register")}
         />
 
-        <Pressable onPress={() => router.push("/(auth)/login")}>
-          <Text style={styles.link}>
-            Se connecter
-          </Text>
+        <View style={styles.separator}>
+          <View style={styles.separatorLine} />
+          <Text style={styles.separatorText}>OU</Text>
+          <View style={styles.separatorLine} />
+        </View>
+
+        <Pressable
+          style={({ pressed }) => [
+            styles.outlineButton,
+            pressed && styles.pressed,
+          ]}
+          onPress={() => router.push("/(auth)/login")}
+        >
+          <LogIn size={22} color={Colors.primary} strokeWidth={2.4} />
+          <Text style={styles.outlineButtonText}>Se connecter</Text>
         </Pressable>
 
-        <Pressable onPress={() => router.push("/(auth)/register")}>
-          <Text style={styles.link}>
-            Créer un compte
-          </Text>
+        <Pressable
+          style={({ pressed }) => [
+            styles.outlineButton,
+            styles.secondaryButton,
+            pressed && styles.pressed,
+          ]}
+          onPress={() => router.push("/(auth)/register")}
+        >
+          <UserPlus size={22} color={Colors.primary} strokeWidth={2.4} />
+          <Text style={styles.outlineButtonText}>Créer un compte</Text>
         </Pressable>
 
-        <Text style={styles.guest}>
-          Continuer en invité
-        </Text>
+        <Pressable
+          style={styles.guestButton}
+          onPress={() => router.replace("/(app)")}
+        >
+          <Text style={styles.guest}>Continuer en invité</Text>
+        </Pressable>
       </View>
-    </LinearGradient>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "#FFFFFF",
     justifyContent: "space-between",
     paddingHorizontal: 30,
-    paddingTop: 120,
-    paddingBottom: 60,
+    paddingTop: 110,
+    paddingBottom: 44,
   },
 
   logoContainer: {
@@ -68,44 +87,90 @@ const styles = StyleSheet.create({
   },
 
   logoCircle: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
+    width: 112,
+    height: 112,
+    borderRadius: 56,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#1A1D20",
-    borderWidth: 1,
-    borderColor: "#2B2F33",
-    marginBottom: 30,
+    backgroundColor: Colors.surfaceLight,
+    borderWidth: 1.5,
+    borderColor: "#E4D9FF",
+    marginBottom: 28,
   },
 
   title: {
-    color: Colors.text,
-    fontSize: 40,
+    color: Colors.primary,
+    fontSize: 44,
     fontWeight: "900",
+    letterSpacing: -1.5,
   },
 
   subtitle: {
-    marginTop: 12,
+    marginTop: 10,
     color: Colors.textSecondary,
-    fontSize: 17,
+    fontSize: 18,
+    fontWeight: "500",
   },
 
   buttons: {
-    gap: 18,
+    gap: 14,
   },
 
-  link: {
-    textAlign: "center",
+  separator: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    marginVertical: 2,
+  },
+
+  separatorLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: Colors.border,
+  },
+
+  separatorText: {
+    color: Colors.textMuted,
+    fontSize: 14,
+    fontWeight: "700",
+  },
+
+  outlineButton: {
+    height: 62,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: Colors.primary,
+    backgroundColor: "#FFFFFF",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 14,
+  },
+
+  secondaryButton: {
+    borderColor: Colors.border,
+  },
+
+  outlineButtonText: {
     color: Colors.text,
-    fontSize: 16,
-    fontWeight: "600",
+    fontSize: 17,
+    fontWeight: "700",
+  },
+
+  pressed: {
+    opacity: 0.72,
+    transform: [{ scale: 0.99 }],
+  },
+
+  guestButton: {
+    alignItems: "center",
+    paddingVertical: 8,
+    marginTop: 2,
   },
 
   guest: {
-    textAlign: "center",
-    color: Colors.textMuted,
-    marginTop: 8,
-    fontSize: 15,
+    color: Colors.primary,
+    fontSize: 16,
+    fontWeight: "600",
   },
 });
