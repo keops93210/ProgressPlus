@@ -1,12 +1,15 @@
 import { router } from "expo-router";
+import { ChevronLeft } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
   Alert,
   FlatList,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -59,12 +62,8 @@ export default function Workout() {
 
     try {
       await createProgram(user.id, name);
-
       setName("");
-
       await loadPrograms();
-
-      Alert.alert("Succès", "Programme créé !");
     } catch (error: any) {
       Alert.alert("Erreur", error.message);
     }
@@ -94,12 +93,31 @@ export default function Workout() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Mes programmes</Text>
+      <View style={styles.header}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Retour"
+          hitSlop={12}
+          onPress={() => router.back()}
+          style={({ pressed }) => [
+            styles.backButton,
+            pressed && styles.pressed,
+          ]}
+        >
+          <ChevronLeft
+            size={28}
+            color={Colors.text}
+            strokeWidth={2.5}
+          />
+        </Pressable>
+
+        <Text style={styles.title}>Mes programmes</Text>
+      </View>
 
       <TextInput
         style={styles.input}
         placeholder="Ex : PUSH"
-        placeholderTextColor="#777"
+        placeholderTextColor={Colors.textMuted}
         value={name}
         onChangeText={setName}
       />
@@ -121,30 +139,22 @@ export default function Workout() {
               onPress={() =>
                 router.push({
                   pathname: "/(app)/program/[id]",
-                  params: {
-                    id: item.id,
-                  },
+                  params: { id: item.id },
                 })
               }
             >
-              <Text style={styles.program}>
-                {item.name}
-              </Text>
+              <Text style={styles.program}>{item.name}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               onPress={() => handleDelete(item.id)}
             >
-              <Text style={styles.delete}>
-                Supprimer
-              </Text>
+              <Text style={styles.delete}>Supprimer</Text>
             </TouchableOpacity>
           </Card>
         )}
         ListEmptyComponent={
-          <Text style={styles.empty}>
-            Aucun programme.
-          </Text>
+          <Text style={styles.empty}>Aucun programme.</Text>
         }
       />
     </SafeAreaView>
@@ -158,11 +168,31 @@ const styles = StyleSheet.create({
     padding: 20,
   },
 
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 25,
+  },
+
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 6,
+    backgroundColor: Colors.surfaceLight,
+  },
+
+  pressed: {
+    opacity: 0.65,
+    transform: [{ scale: 0.96 }],
+  },
+
   title: {
     color: Colors.text,
     fontSize: 30,
     fontWeight: "800",
-    marginBottom: 25,
   },
 
   input: {
@@ -185,7 +215,7 @@ const styles = StyleSheet.create({
   },
 
   delete: {
-    color: "#ff5555",
+    color: "#DC2626",
     fontWeight: "700",
   },
 
