@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
+import * as Notifications from "expo-notifications";
 import { Vibration } from "react-native";
 
 const SOUND_KEY = "progressplus.rest.sound";
@@ -23,8 +24,7 @@ export async function getRestFeedbackSettings(): Promise<RestFeedbackSettings> {
 
   return {
     soundEnabled: sound === null ? DEFAULT_SETTINGS.soundEnabled : sound === "true",
-    vibrationEnabled:
-      vibration === null ? DEFAULT_SETTINGS.vibrationEnabled : vibration === "true",
+    vibrationEnabled: vibration === null ? DEFAULT_SETTINGS.vibrationEnabled : vibration === "true",
   };
 }
 
@@ -34,6 +34,13 @@ export async function setRestSoundEnabled(enabled: boolean) {
 
 export async function setRestVibrationEnabled(enabled: boolean) {
   await AsyncStorage.setItem(VIBRATION_KEY, String(enabled));
+}
+
+export async function requestRestSoundPermission() {
+  const current = await Notifications.getPermissionsAsync();
+  if (current.granted) return true;
+  const requested = await Notifications.requestPermissionsAsync();
+  return requested.granted;
 }
 
 export async function triggerRestFinishedFeedback(settings: RestFeedbackSettings) {
@@ -46,7 +53,21 @@ export async function triggerRestFinishedFeedback(settings: RestFeedbackSettings
     }
   }
 
-  // Sound is intentionally kept as a separate setting so the audio implementation
-  // can be swapped without changing the timer or user preferences.
-  return settings.soundEnabled;
+  if (settings.soundEnabled) {
+    try {
+      const permissionGranted = await requestRestSoundPermission();
+      if (permissionGranted) {
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: "Repos terminé 💪",
+            body: "C'est reparti pour ta prochaine série.",
+            sound: "default",
+          },
+          trigger: null,
+        });
+      }
+    } catch (error) {
+      console.log("REST SOUND ERROR =", error);
+    }
+  }
 }
