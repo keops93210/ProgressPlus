@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { ChevronLeft } from "lucide-react-native";
+import { ChevronLeft, Compass } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
   Alert,
@@ -70,25 +70,21 @@ export default function Workout() {
   }
 
   async function handleDelete(id: string) {
-    Alert.alert(
-      "Supprimer",
-      "Supprimer ce programme ?",
-      [
-        { text: "Annuler", style: "cancel" },
-        {
-          text: "Supprimer",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await deleteProgram(id);
-              await loadPrograms();
-            } catch (error: any) {
-              Alert.alert("Erreur", error.message);
-            }
-          },
+    Alert.alert("Supprimer", "Supprimer ce programme ?", [
+      { text: "Annuler", style: "cancel" },
+      {
+        text: "Supprimer",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await deleteProgram(id);
+            await loadPrograms();
+          } catch (error: any) {
+            Alert.alert("Erreur", error.message);
+          }
         },
-      ]
-    );
+      },
+    ]);
   }
 
   return (
@@ -99,20 +95,26 @@ export default function Workout() {
           accessibilityLabel="Retour"
           hitSlop={12}
           onPress={() => router.back()}
-          style={({ pressed }) => [
-            styles.backButton,
-            pressed && styles.pressed,
-          ]}
+          style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
         >
-          <ChevronLeft
-            size={28}
-            color={Colors.text}
-            strokeWidth={2.5}
-          />
+          <ChevronLeft size={28} color={Colors.text} strokeWidth={2.5} />
         </Pressable>
-
         <Text style={styles.title}>Mes programmes</Text>
       </View>
+
+      <Pressable
+        onPress={() => router.push("/(app)/community-programs")}
+        style={({ pressed }) => [styles.communityButton, pressed && styles.pressed]}
+      >
+        <View style={styles.communityIcon}>
+          <Compass size={21} color={Colors.primary} strokeWidth={2.4} />
+        </View>
+        <View style={styles.communityCopy}>
+          <Text style={styles.communityTitle}>Programmes de la communauté</Text>
+          <Text style={styles.communitySubtitle}>Découvre, note et ajoute des programmes gratuits</Text>
+        </View>
+        <Text style={styles.communityArrow}>›</Text>
+      </Pressable>
 
       <TextInput
         style={styles.input}
@@ -122,10 +124,7 @@ export default function Workout() {
         onChangeText={setName}
       />
 
-      <Button
-        title="CRÉER LE PROGRAMME"
-        onPress={handleCreate}
-      />
+      <Button title="CRÉER LE PROGRAMME" onPress={handleCreate} />
 
       <FlatList
         style={{ marginTop: 25 }}
@@ -137,91 +136,36 @@ export default function Workout() {
           <Card>
             <TouchableOpacity
               onPress={() =>
-                router.push({
-                  pathname: "/(app)/program/[id]",
-                  params: { id: item.id },
-                })
+                router.push({ pathname: "/(app)/program/[id]", params: { id: item.id } })
               }
             >
               <Text style={styles.program}>{item.name}</Text>
             </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => handleDelete(item.id)}
-            >
+            <TouchableOpacity onPress={() => handleDelete(item.id)}>
               <Text style={styles.delete}>Supprimer</Text>
             </TouchableOpacity>
           </Card>
         )}
-        ListEmptyComponent={
-          <Text style={styles.empty}>Aucun programme.</Text>
-        }
+        ListEmptyComponent={<Text style={styles.empty}>Aucun programme.</Text>}
       />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-    padding: 20,
-  },
-
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 25,
-  },
-
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 6,
-    backgroundColor: Colors.surfaceLight,
-  },
-
-  pressed: {
-    opacity: 0.65,
-    transform: [{ scale: 0.96 }],
-  },
-
-  title: {
-    color: Colors.text,
-    fontSize: 30,
-    fontWeight: "800",
-  },
-
-  input: {
-    height: 56,
-    borderRadius: 16,
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    color: Colors.text,
-    paddingHorizontal: 16,
-    marginBottom: 18,
-    fontSize: 16,
-  },
-
-  program: {
-    color: Colors.text,
-    fontSize: 20,
-    fontWeight: "700",
-    marginBottom: 10,
-  },
-
-  delete: {
-    color: "#DC2626",
-    fontWeight: "700",
-  },
-
-  empty: {
-    color: Colors.textSecondary,
-    textAlign: "center",
-    marginTop: 40,
-  },
+  container: { flex: 1, backgroundColor: Colors.background, padding: 20 },
+  header: { flexDirection: "row", alignItems: "center", marginBottom: 18 },
+  backButton: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", marginRight: 6, backgroundColor: Colors.surfaceLight },
+  pressed: { opacity: 0.65, transform: [{ scale: 0.97 }] },
+  title: { color: Colors.text, fontSize: 30, fontWeight: "800" },
+  communityButton: { flexDirection: "row", alignItems: "center", borderRadius: 18, padding: 14, marginBottom: 18, backgroundColor: Colors.surfaceLight, borderWidth: 1, borderColor: "#E4D9FF" },
+  communityIcon: { width: 42, height: 42, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: "#FFFFFF" },
+  communityCopy: { flex: 1, marginLeft: 12 },
+  communityTitle: { color: Colors.text, fontSize: 15, fontWeight: "900" },
+  communitySubtitle: { color: Colors.textSecondary, fontSize: 12, marginTop: 3 },
+  communityArrow: { color: Colors.primary, fontSize: 28, fontWeight: "400", marginLeft: 8 },
+  input: { height: 56, borderRadius: 16, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, color: Colors.text, paddingHorizontal: 16, marginBottom: 18, fontSize: 16 },
+  program: { color: Colors.text, fontSize: 20, fontWeight: "700", marginBottom: 10 },
+  delete: { color: "#DC2626", fontWeight: "700" },
+  empty: { color: Colors.textSecondary, textAlign: "center", marginTop: 40 },
 });
