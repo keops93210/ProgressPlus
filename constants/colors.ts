@@ -1,20 +1,21 @@
 const Colors = {
-  background: "#0F1113",
-  surface: "#1A1D20",
-  surfaceLight: "#2B2F33",
+  background: "#080C0A",
+  surface: "#111713",
+  surfaceLight: "#1B241E",
 
-  primary: "#00D4FF",
-  primaryDark: "#00B8CC",
+  primary: "#22C55E",
+  primaryDark: "#16A34A",
+  primaryLight: "#4ADE80",
 
-  success: "#22C55E",
+  success: "#4ADE80",
   warning: "#F59E0B",
   danger: "#EF4444",
 
-  text: "#FFFFFF",
-  textSecondary: "#A0A4A8",
-  textMuted: "#6B7280",
+  text: "#F5F5F5",
+  textSecondary: "#A3A3A3",
+  textMuted: "#737373",
 
-  border: "#2B2F33",
+  border: "#243029",
 };
 
 export default Colors;
