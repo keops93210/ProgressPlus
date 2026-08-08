@@ -59,7 +59,52 @@ export async function saveWorkoutSet(
 
   if (error) throw error;
 
+  await updatePersonalRecord(sessionId, exerciseId, weight, reps);
+
   return data;
+}
+
+async function updatePersonalRecord(
+  sessionId: string,
+  exerciseId: string,
+  weight: number,
+  reps: number
+) {
+  const { data: session, error: sessionError } = await supabase
+    .from("workout_sessions")
+    .select("user_id")
+    .eq("id", sessionId)
+    .single();
+
+  if (sessionError) throw sessionError;
+
+  const estimated1rm = weight * (1 + reps / 30);
+
+  const { data: current, error: currentError } = await supabase
+    .from("personal_records")
+    .select("weight, reps, estimated_1rm")
+    .eq("user_id", session.user_id)
+    .eq("exercise_id", exerciseId)
+    .maybeSingle();
+
+  if (currentError) throw currentError;
+
+  if (!current || estimated1rm > Number(current.estimated_1rm ?? 0)) {
+    const { error } = await supabase
+      .from("personal_records")
+      .upsert(
+        {
+          user_id: session.user_id,
+          exercise_id: exerciseId,
+          weight,
+          reps,
+          estimated_1rm: Number(estimated1rm.toFixed(2)),
+        },
+        { onConflict: "user_id,exercise_id" }
+      );
+
+    if (error) throw error;
+  }
 }
 
 export async function getWorkoutSession(sessionId: string) {
@@ -120,6 +165,133 @@ export async function getLastPerformance(
   return {
     weight: Number(data.weight) || 0,
     reps: Number(data.reps) || 0,
+  };
+}
+
+export interface ProgressionRecommendation {
+  action: "increase_weight" | "keep_weight" | "increase_reps" | "start";
+  currentWeight: number;
+  recommendedWeight: number;
+  currentReps: number;
+  recommendedReps: number;
+  minReps: number;
+  maxReps: number;
+  completedSets: number;
+  message: string;
+}
+
+export async function getProgressionRecommendation(
+  userId: string,
+  exerciseId: string,
+  minReps: number,
+  maxReps: number,
+  plannedSets: number
+): Promise<ProgressionRecommendation> {
+  const { data: session, error: sessionError } = await supabase
+    .from("workout_sessions")
+    .select("id")
+    .eq("user_id", userId)
+    .not("finished_at", "is", null)
+    .order("finished_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (sessionError) throw sessionError;
+
+  if (!session) {
+    return {
+      action: "start",
+      currentWeight: 0,
+      recommendedWeight: 0,
+      currentReps: minReps,
+      recommendedReps: minReps,
+      minReps,
+      maxReps,
+      completedSets: 0,
+      message: `Commence à ${minReps}–${maxReps} répétitions et trouve ton poids de travail.`,
+    };
+  }
+
+  const { data: sets, error: setsError } = await supabase
+    .from("workout_sets")
+    .select("weight, reps, set_number")
+    .eq("session_id", session.id)
+    .eq("exercise_id", exerciseId)
+    .eq("completed", true)
+    .order("set_number", { ascending: true });
+
+  if (setsError) throw setsError;
+
+  if (!sets?.length) {
+    const fallback = await getLastPerformance(userId, exerciseId);
+    if (!fallback) {
+      return {
+        action: "start",
+        currentWeight: 0,
+        recommendedWeight: 0,
+        currentReps: minReps,
+        recommendedReps: minReps,
+        minReps,
+        maxReps,
+        completedSets: 0,
+        message: `Commence à ${minReps}–${maxReps} répétitions et trouve ton poids de travail.`,
+      };
+    }
+
+    sets.push({
+      weight: fallback.weight,
+      reps: fallback.reps,
+      set_number: 1,
+    });
+  }
+
+  const currentWeight = Number(sets[0].weight) || 0;
+  const averageReps =
+    sets.reduce((sum, set) => sum + Number(set.reps || 0), 0) / sets.length;
+  const allAtTop = sets.length >= plannedSets && sets.every(
+    (set) => Number(set.reps || 0) >= maxReps
+  );
+
+  if (allAtTop && currentWeight > 0) {
+    const recommendedWeight = currentWeight + 2.5;
+    return {
+      action: "increase_weight",
+      currentWeight,
+      recommendedWeight,
+      currentReps: Math.round(averageReps),
+      recommendedReps: minReps,
+      minReps,
+      maxReps,
+      completedSets: sets.length,
+      message: `Toutes tes séries ont atteint ${maxReps} reps. Passe à ${recommendedWeight} kg et repars à ${minReps} reps.`,
+    };
+  }
+
+  if (averageReps >= minReps && currentWeight > 0) {
+    const recommendedReps = Math.min(maxReps, Math.round(averageReps) + 1);
+    return {
+      action: recommendedReps > Math.round(averageReps) ? "increase_reps" : "keep_weight",
+      currentWeight,
+      recommendedWeight: currentWeight,
+      currentReps: Math.round(averageReps),
+      recommendedReps,
+      minReps,
+      maxReps,
+      completedSets: sets.length,
+      message: `Garde ${currentWeight} kg et vise ${recommendedReps} reps sur les prochaines séries.`,
+    };
+  }
+
+  return {
+    action: "keep_weight",
+    currentWeight,
+    recommendedWeight: currentWeight,
+    currentReps: Math.round(averageReps),
+    recommendedReps: Math.max(minReps, Math.round(averageReps)),
+    minReps,
+    maxReps,
+    completedSets: sets.length,
+    message: `Garde ${currentWeight} kg et consolide ta technique dans la zone ${minReps}–${maxReps} reps.`,
   };
 }
 
