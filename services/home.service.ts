@@ -12,7 +12,9 @@ export async function getHomeData(userId: string) {
       .eq("id", userId)
       .maybeSingle(),
     getPrograms(userId),
-    getWorkoutHistory(userId, 30),
+    // The home dashboard needs enough history to calculate monthly comparisons.
+    // A small limit such as 30 can silently produce incorrect totals for active users.
+    getWorkoutHistory(userId, 200),
     getPersonalRecords(userId, 5),
     getLatestRecoveryCheckin(userId),
     getRankingProfile(userId),
