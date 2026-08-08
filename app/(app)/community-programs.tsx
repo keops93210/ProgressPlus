@@ -3,6 +3,7 @@ import { ChevronLeft, Download, Heart, Star, TrendingUp } from "lucide-react-nat
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -17,6 +18,7 @@ import {
   CommunityProgram,
   CommunitySort,
   downloadCommunityProgram,
+  rateCommunityProgram,
   toggleCommunityFavorite,
 } from "@/services/community-program.service";
 
@@ -40,6 +42,7 @@ export default function CommunityPrograms() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [downloading, setDownloading] = useState<string | null>(null);
+  const [ratingId, setRatingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -61,15 +64,34 @@ export default function CommunityPrograms() {
     try {
       setDownloading(program.id);
       await downloadCommunityProgram(program.id);
+      Alert.alert("Programme ajouté", "Le programme a été ajouté à Mes programmes.");
       await load();
+    } catch (error: any) {
+      Alert.alert("Impossible d'ajouter le programme", error?.message ?? "Une erreur est survenue.");
     } finally {
       setDownloading(null);
     }
   }
 
   async function handleFavorite(program: CommunityProgram) {
-    await toggleCommunityFavorite(program.id);
-    await load();
+    try {
+      await toggleCommunityFavorite(program.id);
+      await load();
+    } catch (error: any) {
+      Alert.alert("Impossible de modifier le favori", error?.message ?? "Une erreur est survenue.");
+    }
+  }
+
+  async function handleRating(program: CommunityProgram, rating: number) {
+    try {
+      setRatingId(program.id);
+      await rateCommunityProgram(program.id, rating);
+      await load();
+    } catch (error: any) {
+      Alert.alert("Impossible d'enregistrer la note", error?.message ?? "Une erreur est survenue.");
+    } finally {
+      setRatingId(null);
+    }
   }
 
   return (
@@ -181,6 +203,26 @@ export default function CommunityPrograms() {
                   <Text style={styles.category}>{program.category}</Text>
                 </View>
 
+                <View style={styles.ratingRow}>
+                  <Text style={styles.rateLabel}>Ta note</Text>
+                  <View style={styles.ratingStars}>
+                    {[1, 2, 3, 4, 5].map((value) => (
+                      <Pressable
+                        key={value}
+                        onPress={() => handleRating(program, value)}
+                        disabled={ratingId === program.id}
+                        hitSlop={4}
+                      >
+                        <Star
+                          size={17}
+                          color={Colors.primary}
+                          fill={ratingId === program.id ? "transparent" : Colors.primary}
+                        />
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
+
                 <View style={styles.actions}>
                   <Pressable
                     onPress={() => handleDownload(program)}
@@ -251,6 +293,9 @@ const styles = StyleSheet.create({
   metaText: { color: Colors.textSecondary, fontSize: 12, fontWeight: "700" },
   metaCount: { color: Colors.textMuted, fontSize: 11 },
   category: { color: Colors.primary, fontSize: 11, fontWeight: "800", marginLeft: "auto" },
+  ratingRow: { flexDirection: "row", alignItems: "center", marginTop: 11 },
+  rateLabel: { color: Colors.textMuted, fontSize: 11, fontWeight: "700", marginRight: 8 },
+  ratingStars: { flexDirection: "row", gap: 2 },
   actions: { flexDirection: "row", gap: 8, marginTop: 13 },
   downloadButton: { flex: 1, minHeight: 44, borderRadius: 13, backgroundColor: Colors.primary, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, paddingHorizontal: 10 },
   downloadText: { color: "#FFFFFF", fontSize: 11, fontWeight: "900" },
