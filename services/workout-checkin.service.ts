@@ -32,10 +32,10 @@ export function calculateReadiness(input: {
   pain: number;
 }): ReadinessResult {
   const score = Math.round(
-    (input.sleep + input.energy + input.mood + (6 - input.fatigue) + (6 - input.pain)) / 5
+    (input.sleep + input.energy + input.mood + input.fatigue + input.pain) / 5
   );
 
-  if (score >= 4 && input.pain <= 2) {
+  if (score >= 4 && input.fatigue >= 4 && input.pain >= 4) {
     return {
       score,
       mode: "push",
@@ -44,7 +44,7 @@ export function calculateReadiness(input: {
     };
   }
 
-  if (score <= 2 || input.pain >= 4) {
+  if (score <= 2 || input.fatigue <= 2 || input.pain <= 2) {
     return {
       score,
       mode: "recover",
