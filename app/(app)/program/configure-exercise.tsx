@@ -1,10 +1,6 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import {
-  Alert,
-  StyleSheet,
-  Text,
-} from "react-native";
+import { Alert, StyleSheet, Text } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import BottomButton from "@/components/ui/BottomButton";
@@ -15,118 +11,67 @@ import Colors from "@/constants/colors";
 import { addExerciseToProgram } from "@/services/program.service";
 
 export default function ConfigureExerciseScreen() {
-  const {
-    id,
-    name,
-    exerciseId,
-  } = useLocalSearchParams<{
-    id: string;
-    name: string;
-    exerciseId: string;
-  }>();
-
+  const { id, name, exerciseId } = useLocalSearchParams<{ id: string; name: string; exerciseId: string }>();
   const [sets, setSets] = useState(3);
   const [minReps, setMinReps] = useState(8);
   const [maxReps, setMaxReps] = useState(10);
   const [rest, setRest] = useState(90);
+  const [saving, setSaving] = useState(false);
 
   async function handleAddExercise() {
+    if (saving) return;
+    if (!id || !exerciseId) {
+      Alert.alert("Erreur", "Programme ou exercice introuvable.");
+      return;
+    }
+    if (minReps > maxReps) {
+      Alert.alert("Réglage invalide", "Le minimum de répétitions ne peut pas dépasser le maximum.");
+      return;
+    }
+
     try {
-      if (!id || !exerciseId) {
-        Alert.alert(
-          "Erreur",
-          "Programme ou exercice introuvable."
-        );
-        return;
-      }
-
-      await addExerciseToProgram(
-        String(id),
-        String(exerciseId),
-        sets,
-        minReps,
-        maxReps,
-        rest
-      );
-
+      setSaving(true);
+      await addExerciseToProgram(String(id), String(exerciseId), sets, minReps, maxReps, rest);
       router.back();
       router.back();
     } catch (error: any) {
-      Alert.alert("Erreur", error.message);
+      Alert.alert("Erreur", error?.message ?? "Impossible d'ajouter l'exercice.");
+    } finally {
+      setSaving(false);
     }
   }
 
   return (
     <SafeAreaView style={styles.container}>
-      <Header
-        title={name ?? "Exercice"}
-        subtitle="Configuration"
-      />
-
+      <Header title={name ?? "Exercice"} subtitle="Configuration" />
       <Card>
         <Text style={styles.label}>Séries</Text>
+        <Stepper value={sets} onChange={setSets} min={1} max={10} />
 
-        <Stepper
-          value={sets}
-          onChange={setSets}
-          min={1}
-          max={10}
-        />
-
-        <Text style={styles.label}>
-          Répétitions minimum
-        </Text>
-
+        <Text style={styles.label}>Répétitions minimum</Text>
         <Stepper
           value={minReps}
-          onChange={setMinReps}
+          onChange={(value) => {
+            setMinReps(value);
+            if (value > maxReps) setMaxReps(value);
+          }}
           min={1}
           max={30}
         />
 
-        <Text style={styles.label}>
-          Répétitions maximum
-        </Text>
+        <Text style={styles.label}>Répétitions maximum</Text>
+        <Stepper value={maxReps} onChange={(value) => setMaxReps(Math.max(minReps, value))} min={1} max={30} />
 
-        <Stepper
-          value={maxReps}
-          onChange={setMaxReps}
-          min={1}
-          max={30}
-        />
-
-        <Text style={styles.label}>
-          Repos (secondes)
-        </Text>
-
-        <Stepper
-          value={rest}
-          onChange={setRest}
-          min={30}
-          max={300}
-        />
+        <Text style={styles.label}>Repos (secondes)</Text>
+        <Stepper value={rest} onChange={setRest} min={30} max={300} />
       </Card>
 
-      <BottomButton
-        title="AJOUTER"
-        onPress={handleAddExercise}
-      />
+      <BottomButton title={saving ? "AJOUT..." : "AJOUTER"} onPress={handleAddExercise} disabled={saving} />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-    padding: 20,
-  },
-
-  label: {
-    color: Colors.text,
-    fontSize: 16,
-    fontWeight: "700",
-    marginBottom: 8,
-    marginTop: 16,
-  },
+  container: { flex: 1, backgroundColor: Colors.background, padding: 20 },
+  label: { color: Colors.text, fontSize: 16, fontWeight: "700", marginBottom: 8, marginTop: 16 },
 });
