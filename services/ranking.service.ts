@@ -41,15 +41,14 @@ export const RANKS: { name: ProgressRank; min: number; next: number | null }[] =
 
 export function getRankProgress(score: number) {
   const current = [...RANKS].reverse().find((rank) => score >= rank.min) ?? RANKS[0];
-  const next = current.next;
-  if (next === null) return { current, next: null, percent: 1, pointsToNext: 0 };
-  const span = next - current.min;
+  if (current.next === null) return { current, next: null, percent: 1, pointsToNext: 0 };
+  const span = current.next - current.min;
   const percent = Math.min(1, Math.max(0, (score - current.min) / span));
   return {
     current,
-    next: RANKS.find((rank) => rank.min === next) ?? null,
+    next: RANKS.find((rank) => rank.min === current.next) ?? null,
     percent,
-    pointsToNext: Math.max(0, next - score),
+    pointsToNext: Math.max(0, current.next - score),
   };
 }
 
@@ -65,7 +64,7 @@ export async function getRankingProfile(userId: string): Promise<RankingProfile>
 
   const { data: created, error: createError } = await supabase
     .from("progress_profiles")
-    .insert({ user_id: userId })
+    .insert({ user_id: userId, score: 0, rank: "Fer", season: 1, season_points: 0, streak_days: 0 })
     .select()
     .single();
 
@@ -73,21 +72,43 @@ export async function getRankingProfile(userId: string): Promise<RankingProfile>
   return created as RankingProfile;
 }
 
-export async function addProgressPoints(
-  userId: string,
-  eventType: string,
-  points: number,
-  metadata: Record<string, unknown> = {}
-) {
-  const { data, error } = await supabase.rpc("add_progress_points", {
-    p_user_id: userId,
-    p_event_type: eventType,
-    p_points: points,
-    p_metadata: metadata,
-  });
+export function calculateWorkoutPoints(input: {
+  volume: number;
+  totalSets: number;
+  personalRecords?: number;
+  consistencyBonus?: number;
+}) {
+  const volumePoints = Math.min(100, Math.floor(input.volume / 500));
+  const setPoints = Math.min(30, input.totalSets * 2);
+  const consistencyBonus = Math.max(0, Math.min(25, input.consistencyBonus ?? 0));
+  const prBonus = Math.min(100, (input.personalRecords ?? 0) * 25);
+  return volumePoints + setPoints + consistencyBonus + prBonus;
+}
+
+export async function awardWorkoutPoints(userId: string, input: {
+  volume: number;
+  totalSets: number;
+  personalRecords?: number;
+}) {
+  const profile = await getRankingProfile(userId);
+  const points = calculateWorkoutPoints(input);
+  const nextScore = profile.score + points;
+  const nextRank = [...RANKS].reverse().find((rank) => nextScore >= rank.min) ?? RANKS[0];
+
+  const { data, error } = await supabase
+    .from("progress_profiles")
+    .update({
+      score: nextScore,
+      rank: nextRank.name,
+      season_points: profile.season_points + points,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("user_id", userId)
+    .select()
+    .single();
 
   if (error) throw error;
-  return data as RankingProfile;
+  return { profile: data as RankingProfile, pointsEarned: points };
 }
 
 export async function getGlobalRanking(limit = 50): Promise<RankingRow[]> {
@@ -98,10 +119,7 @@ export async function getGlobalRanking(limit = 50): Promise<RankingRow[]> {
     .limit(limit);
 
   if (error) throw error;
-  return (data ?? []).map((row, index) => ({
-    ...(row as RankingProfile),
-    position: index + 1,
-  }));
+  return (data ?? []).map((row, index) => ({ ...(row as RankingProfile), position: index + 1 }));
 }
 
 export async function getSeasonRanking(season: number, limit = 50): Promise<RankingRow[]> {
@@ -113,10 +131,7 @@ export async function getSeasonRanking(season: number, limit = 50): Promise<Rank
     .limit(limit);
 
   if (error) throw error;
-  return (data ?? []).map((row, index) => ({
-    ...(row as RankingProfile),
-    position: index + 1,
-  }));
+  return (data ?? []).map((row, index) => ({ ...(row as RankingProfile), position: index + 1 }));
 }
 
 export async function getUserRankingPosition(userId: string) {
@@ -128,17 +143,4 @@ export async function getUserRankingPosition(userId: string) {
 
   if (error) throw error;
   return (count ?? 0) + 1;
-}
-
-export function calculateWorkoutPoints(input: {
-  volume: number;
-  totalSets: number;
-  isFirstSessionOfDay?: boolean;
-  personalRecords?: number;
-}) {
-  const volumePoints = Math.min(100, Math.floor(input.volume / 500));
-  const setPoints = Math.min(30, input.totalSets * 2);
-  const consistencyBonus = input.isFirstSessionOfDay ? 10 : 0;
-  const prBonus = Math.min(100, (input.personalRecords ?? 0) * 25);
-  return volumePoints + setPoints + consistencyBonus + prBonus;
 }
