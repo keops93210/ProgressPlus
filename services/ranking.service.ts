@@ -104,13 +104,35 @@ export async function calculateStreak(userId: string) {
 }
 
 export async function awardWorkoutPoints(userId: string, input: { volume: number; totalSets: number; personalRecords?: number; sessionId?: string; }) {
+  // Une séance terminée ne doit jamais pouvoir rapporter deux fois les mêmes points.
+  if (input.sessionId) {
+    const { data: existingEvent, error: existingEventError } = await supabase
+      .from("progress_score_events")
+      .select("points")
+      .eq("user_id", userId)
+      .eq("event_type", "workout_completed")
+      .eq("metadata->>session_id", input.sessionId)
+      .limit(1)
+      .maybeSingle();
+    if (existingEventError) throw existingEventError;
+    if (existingEvent) {
+      return { profile: await getRankingProfile(userId), pointsEarned: 0, streak: await calculateStreak(userId), alreadyAwarded: true };
+    }
+  }
+
   const profile = await getRankingProfile(userId);
   const streak = await calculateStreak(userId);
   const points = calculateWorkoutPoints({ ...input, consistencyBonus: Math.min(25, Math.max(0, streak.current * 5)) });
   const nextScore = profile.score + points;
   const nextRank = [...RANKS].reverse().find((rank) => nextScore >= rank.min) ?? RANKS[0];
 
-  const { data, error } = await supabase.from("progress_profiles").update({ score: nextScore, rank: nextRank.name, season_points: profile.season_points + points, streak_days: streak.current, updated_at: new Date().toISOString() }).eq("user_id", userId).select().single();
+  const { data, error } = await supabase.from("progress_profiles").update({
+    score: nextScore,
+    rank: nextRank.name,
+    season_points: profile.season_points + points,
+    streak_days: streak.current,
+    updated_at: new Date().toISOString(),
+  }).eq("user_id", userId).select().single();
   if (error) throw error;
 
   const { error: eventError } = await supabase.from("progress_score_events").insert({
@@ -127,7 +149,7 @@ export async function awardWorkoutPoints(userId: string, input: { volume: number
   });
   if (eventError) throw eventError;
 
-  return { profile: data as RankingProfile, pointsEarned: points, streak };
+  return { profile: data as RankingProfile, pointsEarned: points, streak, alreadyAwarded: false };
 }
 
 export async function getGlobalRanking(limit = 50): Promise<RankingRow[]> {
