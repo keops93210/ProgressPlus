@@ -1,20 +1,26 @@
 import { supabase } from "@/lib/supabase";
 
-export async function startWorkoutSession(
-  userId: string,
-  programId: string
-) {
+export async function startWorkoutSession(userId: string, programId: string) {
+  const { data: activeSession, error: activeError } = await supabase
+    .from("workout_sessions")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("program_id", programId)
+    .is("finished_at", null)
+    .order("started_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (activeError) throw activeError;
+  if (activeSession) return activeSession;
+
   const { data, error } = await supabase
     .from("workout_sessions")
-    .insert({
-      user_id: userId,
-      program_id: programId,
-    })
+    .insert({ user_id: userId, program_id: programId })
     .select()
     .single();
 
   if (error) throw error;
-
   return data;
 }
 
@@ -60,7 +66,6 @@ export async function saveWorkoutSet(
   if (error) throw error;
 
   await updatePersonalRecord(sessionId, exerciseId, weight, reps);
-
   return data;
 }
 
@@ -110,30 +115,22 @@ async function updatePersonalRecord(
 export async function getWorkoutSession(sessionId: string) {
   const { data, error } = await supabase
     .from("workout_sessions")
-    .select(`
-      *,
-      workout_sets (*)
-    `)
+    .select(`*, workout_sets (*)`)
     .eq("id", sessionId)
     .single();
 
   if (error) throw error;
-
   return data;
 }
 
 export async function getWorkoutExercises(programId: string) {
   const { data, error } = await supabase
     .from("program_exercises")
-    .select(`
-      *,
-      exercises (*)
-    `)
+    .select(`*, exercises (*)`)
     .eq("program_id", programId)
     .order("position");
 
   if (error) throw error;
-
   return data;
 }
 
@@ -143,15 +140,7 @@ export async function getLastPerformance(
 ): Promise<{ weight: number; reps: number } | null> {
   const { data, error } = await supabase
     .from("workout_sets")
-    .select(`
-      weight,
-      reps,
-      created_at,
-      workout_sessions!inner (
-        user_id,
-        finished_at
-      )
-    `)
+    .select(`weight, reps, created_at, workout_sessions!inner (user_id, finished_at)`)
     .eq("exercise_id", exerciseId)
     .eq("workout_sessions.user_id", userId)
     .not("workout_sessions.finished_at", "is", null)
@@ -180,6 +169,12 @@ export interface ProgressionRecommendation {
   message: string;
 }
 
+type ProgressionSet = {
+  weight: number;
+  reps: number;
+  set_number: number;
+};
+
 export async function getProgressionRecommendation(
   userId: string,
   exerciseId: string,
@@ -187,18 +182,19 @@ export async function getProgressionRecommendation(
   maxReps: number,
   plannedSets: number
 ): Promise<ProgressionRecommendation> {
-  const { data: session, error: sessionError } = await supabase
-    .from("workout_sessions")
-    .select("id")
-    .eq("user_id", userId)
-    .not("finished_at", "is", null)
-    .order("finished_at", { ascending: false })
+  const { data: latestSet, error: latestSetError } = await supabase
+    .from("workout_sets")
+    .select("session_id, workout_sessions!inner(id, user_id, finished_at)")
+    .eq("exercise_id", exerciseId)
+    .eq("workout_sessions.user_id", userId)
+    .not("workout_sessions.finished_at", "is", null)
+    .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 
-  if (sessionError) throw sessionError;
+  if (latestSetError) throw latestSetError;
 
-  if (!session) {
+  if (!latestSet) {
     return {
       action: "start",
       currentWeight: 0,
@@ -212,45 +208,41 @@ export async function getProgressionRecommendation(
     };
   }
 
-  const { data: sets, error: setsError } = await supabase
+  const { data: rawSets, error: setsError } = await supabase
     .from("workout_sets")
     .select("weight, reps, set_number")
-    .eq("session_id", session.id)
+    .eq("session_id", latestSet.session_id)
     .eq("exercise_id", exerciseId)
     .eq("completed", true)
     .order("set_number", { ascending: true });
 
   if (setsError) throw setsError;
 
-  if (!sets?.length) {
-    const fallback = await getLastPerformance(userId, exerciseId);
-    if (!fallback) {
-      return {
-        action: "start",
-        currentWeight: 0,
-        recommendedWeight: 0,
-        currentReps: minReps,
-        recommendedReps: minReps,
-        minReps,
-        maxReps,
-        completedSets: 0,
-        message: `Commence à ${minReps}–${maxReps} répétitions et trouve ton poids de travail.`,
-      };
-    }
+  const sets: ProgressionSet[] = (rawSets ?? []).map((set) => ({
+    weight: Number(set.weight) || 0,
+    reps: Number(set.reps) || 0,
+    set_number: Number(set.set_number) || 0,
+  }));
 
-    sets.push({
-      weight: fallback.weight,
-      reps: fallback.reps,
-      set_number: 1,
-    });
+  if (!sets.length) {
+    return {
+      action: "start",
+      currentWeight: 0,
+      recommendedWeight: 0,
+      currentReps: minReps,
+      recommendedReps: minReps,
+      minReps,
+      maxReps,
+      completedSets: 0,
+      message: `Commence à ${minReps}–${maxReps} répétitions et trouve ton poids de travail.`,
+    };
   }
 
-  const currentWeight = Number(sets[0].weight) || 0;
+  const currentWeight = sets[0].weight;
   const averageReps =
-    sets.reduce((sum, set) => sum + Number(set.reps || 0), 0) / sets.length;
-  const allAtTop = sets.length >= plannedSets && sets.every(
-    (set) => Number(set.reps || 0) >= maxReps
-  );
+    sets.reduce((sum, set) => sum + set.reps, 0) / sets.length;
+  const allAtTop =
+    sets.length >= plannedSets && sets.every((set) => set.reps >= maxReps);
 
   if (allAtTop && currentWeight > 0) {
     const recommendedWeight = currentWeight + 2.5;
@@ -328,6 +320,5 @@ export async function getWorkoutHistory(
     .limit(limit);
 
   if (error) throw error;
-
   return (data ?? []) as unknown as WorkoutHistoryItem[];
 }
