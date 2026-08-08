@@ -10,7 +10,16 @@ import Colors from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthContext";
 import { saveRecoveryCheckin, getRecoveryAdvice } from "@/services/recovery.service";
 import { awardWorkoutPoints } from "@/services/ranking.service";
-import { finishWorkoutSession, getLastPerformance, getProgressionRecommendation, getWorkoutExercises, getWorkoutSession, saveWorkoutSet, startWorkoutSession, ProgressionRecommendation } from "@/services/workout-session.service";
+import {
+  finishWorkoutSession,
+  getLastPerformance,
+  getProgressionRecommendation,
+  getWorkoutExercises,
+  getWorkoutSession,
+  saveWorkoutSet,
+  startWorkoutSession,
+  ProgressionRecommendation,
+} from "@/services/workout-session.service";
 import { ProgramExercise } from "@/types/programExercise";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
@@ -46,10 +55,16 @@ export default function WorkoutSessionScreen() {
   const exercise = exercises[currentExerciseIndex];
   const totalSets = exercise?.sets ?? 0;
   const completedSets = Array.from({ length: Math.max(0, currentSet - 1) }, (_, index) => index + 1);
+  const userId = user?.id ?? null;
 
   useEffect(() => {
-    if (!programId || !user) return;
+    if (!programId || !userId) {
+      setLoading(false);
+      return;
+    }
+
     let cancelled = false;
+
     async function loadWorkout() {
       try {
         setLoading(true);
@@ -57,7 +72,7 @@ export default function WorkoutSessionScreen() {
         if (cancelled) return;
         const loadedExercises = data ?? [];
         setExercises(loadedExercises);
-        const session = await startWorkoutSession(user.id, String(programId));
+        const session = await startWorkoutSession(userId, String(programId));
         if (cancelled) return;
         setSessionId(session.id);
         setSessionStartedAt(new Date(session.started_at).getTime());
@@ -90,20 +105,25 @@ export default function WorkoutSessionScreen() {
         if (!cancelled) setLoading(false);
       }
     }
+
     loadWorkout();
-    return () => { cancelled = true; };
-  }, [programId, user]);
+    return () => {
+      cancelled = true;
+    };
+  }, [programId, userId]);
 
   useEffect(() => {
-    if (!exercise || !user || !checkInDone) return;
+    if (!exercise || !userId || !checkInDone) return;
+
     let cancelled = false;
+
     async function loadExerciseData() {
       try {
         setLastPerformanceLoading(true);
         setRecommendationLoading(true);
         const [performance, nextRecommendation] = await Promise.all([
-          getLastPerformance(user.id, exercise.exercise_id),
-          getProgressionRecommendation(user.id, exercise.exercise_id, exercise.min_reps, exercise.max_reps, exercise.sets),
+          getLastPerformance(userId, exercise.exercise_id),
+          getProgressionRecommendation(userId, exercise.exercise_id, exercise.min_reps, exercise.max_reps, exercise.sets),
         ]);
         if (cancelled) return;
         setLastPerformance(performance);
@@ -127,9 +147,12 @@ export default function WorkoutSessionScreen() {
         }
       }
     }
+
     loadExerciseData();
-    return () => { cancelled = true; };
-  }, [exercise?.exercise_id, user?.id, checkInDone]);
+    return () => {
+      cancelled = true;
+    };
+  }, [exercise?.exercise_id, userId, checkInDone]);
 
   useEffect(() => {
     if (!exercise) return;
@@ -148,9 +171,9 @@ export default function WorkoutSessionScreen() {
   }, [isResting, restTime, exercise?.rest_seconds]);
 
   async function handleCheckIn(values: WorkoutCheckInValues) {
-    if (!sessionId || !user) return;
+    if (!sessionId || !userId) return;
     try {
-      const saved = await saveRecoveryCheckin(user.id, sessionId, values as any);
+      const saved = await saveRecoveryCheckin(userId, sessionId, values as any);
       const advice = getRecoveryAdvice(saved.recovery_score);
       setReadinessMessage(`${advice.title} — ${advice.message}`);
       setCheckInDone(true);
@@ -200,13 +223,15 @@ export default function WorkoutSessionScreen() {
       const duration = sessionStartedAt ? Math.max(0, Math.floor((Date.now() - sessionStartedAt) / 1000)) : 0;
       await finishWorkoutSession(sessionId, duration, nextVolume, nextTotalSets);
 
-      if (user) {
-        try {
-          const result = await awardWorkoutPoints(user.id, { volume: nextVolume, totalSets: nextTotalSets, personalRecords: nextPersonalRecords });
-          setEarnedPoints(result.pointsEarned);
-        } catch (rankingError) {
-          console.log("RANKING AWARD ERROR =", rankingError);
-        }
+      try {
+        const result = await awardWorkoutPoints(userId, {
+          volume: nextVolume,
+          totalSets: nextTotalSets,
+          personalRecords: nextPersonalRecords,
+        });
+        setEarnedPoints(result.pointsEarned);
+      } catch (rankingError) {
+        console.log("RANKING AWARD ERROR =", rankingError);
       }
 
       setIsResting(false);
@@ -222,7 +247,12 @@ export default function WorkoutSessionScreen() {
   function applyRecommendation() {
     if (!recommendation) return;
     if (recommendation.recommendedWeight > 0) setWeight(recommendation.recommendedWeight);
-    setReps(Math.min(exercise?.max_reps ?? recommendation.recommendedReps, Math.max(exercise?.min_reps ?? recommendation.recommendedReps, recommendation.recommendedReps)));
+    setReps(
+      Math.min(
+        exercise?.max_reps ?? recommendation.recommendedReps,
+        Math.max(exercise?.min_reps ?? recommendation.recommendedReps, recommendation.recommendedReps)
+      )
+    );
   }
 
   if (loading) return <SafeAreaView style={styles.container}><Header title="Chargement..." /></SafeAreaView>;
@@ -285,7 +315,11 @@ export default function WorkoutSessionScreen() {
         <WorkoutRepsCard reps={reps} onIncrease={() => setReps((value) => Math.min(exercise?.max_reps ?? value + 1, value + 1))} onDecrease={() => setReps((value) => Math.max(exercise?.min_reps ?? 1, value - 1))} />
         <WorkoutProgressCard totalSets={totalSets} completedSets={completedSets} weight={weight} reps={reps} />
       </ScrollView>
-      <BottomButton title={saving ? "ENREGISTREMENT..." : currentSet === totalSets ? currentExerciseIndex === exercises.length - 1 ? "TERMINER LA SÉANCE" : "EXERCICE SUIVANT" : "VALIDER LA SÉRIE"} onPress={validateSet} disabled={!exercise || saving} />
+      <BottomButton
+        title={saving ? "ENREGISTREMENT..." : currentSet === totalSets ? currentExerciseIndex === exercises.length - 1 ? "TERMINER LA SÉANCE" : "EXERCICE SUIVANT" : "VALIDER LA SÉRIE"}
+        onPress={validateSet}
+        disabled={!exercise || saving}
+      />
     </SafeAreaView>
   );
 }
