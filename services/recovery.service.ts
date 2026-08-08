@@ -44,7 +44,6 @@ export async function saveRecoveryCheckin(userId: string, sessionId: string, inp
     mood_score: input.mood,
     fatigue_score: input.fatigue,
     pain_score: input.pain,
-    recovery_score: recoveryScore,
   }).select().single();
   if (error) throw error;
 
