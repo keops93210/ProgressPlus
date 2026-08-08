@@ -36,9 +36,34 @@ export async function getRankingProfile(userId: string): Promise<RankingProfile>
   const { data, error } = await supabase.from("progress_profiles").select("*").eq("user_id", userId).maybeSingle();
   if (error) throw error;
   if (data) return data as RankingProfile;
-  const { data: created, error: createError } = await supabase.from("progress_profiles").insert({ user_id: userId, score: 0, rank: "Fer", season: 1, season_points: 0, streak_days: 0 }).select().single();
+
+  const initial = {
+    user_id: userId,
+    score: 0,
+    rank: "Fer" as ProgressRank,
+    season: 1,
+    season_points: 0,
+    streak_days: 0,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { data: created, error: createError } = await supabase
+    .from("progress_profiles")
+    .upsert(initial, { onConflict: "user_id", ignoreDuplicates: true })
+    .select()
+    .maybeSingle();
+
   if (createError) throw createError;
-  return created as RankingProfile;
+  if (created) return created as RankingProfile;
+
+  const { data: existing, error: retryError } = await supabase
+    .from("progress_profiles")
+    .select("*")
+    .eq("user_id", userId)
+    .single();
+
+  if (retryError) throw retryError;
+  return existing as RankingProfile;
 }
 
 export function calculateWorkoutPoints(input: { volume: number; totalSets: number; personalRecords?: number; consistencyBonus?: number; }) {
