@@ -49,11 +49,14 @@ function ScorePicker({ title, value, onChange, labels = ["Très bas", "Bas", "Mo
 export default function WorkoutCheckIn({ onComplete, onContinue }: Props) {
   const [values, setValues] = useState<CheckinValues>({ sleep: 3, energy: 3, mood: 3, fatigue: 3, pain: 1 });
 
-  const readyLabel = useMemo(() => {
-    const score = Math.round((values.sleep + values.energy + values.mood + values.fatigue + values.pain) / 5);
-    if (score >= 4 && values.pain >= 4) return "Tu sembles prêt à pousser 🟢";
-    if (score <= 2 || values.pain <= 2) return "On va adapter la séance 🟠";
-    return "Séance normale 🟡";
+  const readiness = useMemo(() => {
+    // Fatigue and pain are inverted: 5 means little/no fatigue and no pain.
+    const score = (values.sleep + values.energy + values.mood + (6 - values.fatigue) + (6 - values.pain)) / 5;
+    if (values.pain <= 2 || values.fatigue <= 2 || score <= 2.4) {
+      return { label: "On va adapter la séance 🟠", score };
+    }
+    if (score >= 4.1) return { label: "Très bonnes conditions 🟢", score };
+    return { label: "Séance normale 🟡", score };
   }, [values]);
 
   function handleSubmit() {
@@ -71,7 +74,10 @@ export default function WorkoutCheckIn({ onComplete, onContinue }: Props) {
       <ScorePicker title="😊 Humeur" value={values.mood} onChange={(value) => setValues((v) => ({ ...v, mood: value }))} />
       <ScorePicker title="💪 Fatigue musculaire" labels={["Très fatigué", "Fatigué", "Moyen", "Peu fatigué", "Pas fatigué"]} value={values.fatigue} onChange={(value) => setValues((v) => ({ ...v, fatigue: value }))} />
       <ScorePicker title="🩹 Douleur / gêne" labels={["Très forte", "Forte", "Moyenne", "Faible", "Aucune"]} value={values.pain} onChange={(value) => setValues((v) => ({ ...v, pain: value }))} />
-      <View style={styles.result}><Text style={styles.resultText}>{readyLabel}</Text></View>
+      <View style={styles.result}>
+        <Text style={styles.resultText}>{readiness.label}</Text>
+        <Text style={styles.resultScore}>Score récupération : {readiness.score.toLocaleString("fr-FR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}/5</Text>
+      </View>
       <Pressable style={styles.button} onPress={handleSubmit}>
         <Text style={styles.buttonText}>COMMENCER MA SÉANCE</Text>
       </Pressable>
@@ -96,6 +102,7 @@ const styles = StyleSheet.create({
   selectedLabel: { color: Colors.textMuted, fontSize: 11 },
   result: { padding: 14, borderRadius: 14, backgroundColor: Colors.background },
   resultText: { color: Colors.text, fontSize: 14, fontWeight: "800", textAlign: "center" },
+  resultScore: { color: Colors.textSecondary, fontSize: 11, textAlign: "center", marginTop: 5 },
   button: { minHeight: 52, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: Colors.primary },
   buttonText: { color: "#FFFFFF", fontSize: 14, fontWeight: "900", letterSpacing: 0.4 },
 });
