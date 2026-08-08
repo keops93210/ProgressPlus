@@ -41,12 +41,12 @@ export default function AppLayout() {
       />
 
       {/* Routes internes : jamais visibles dans la barre principale. */}
-      <Tabs.Screen name="program" options={{ href: null, tabBarButton: () => null }} />
-      <Tabs.Screen name="workout-session" options={{ href: null, tabBarButton: () => null }} />
-      <Tabs.Screen name="exercise" options={{ href: null, tabBarButton: () => null }} />
-      <Tabs.Screen name="exercise-detail" options={{ href: null, tabBarButton: () => null }} />
-      <Tabs.Screen name="muscle-library" options={{ href: null, tabBarButton: () => null }} />
-      <Tabs.Screen name="community-programs" options={{ href: null, tabBarButton: () => null }} />
+      <Tabs.Screen name="program" options={{ href: null }} />
+      <Tabs.Screen name="workout-session" options={{ href: null }} />
+      <Tabs.Screen name="exercise" options={{ href: null }} />
+      <Tabs.Screen name="exercise-detail" options={{ href: null }} />
+      <Tabs.Screen name="muscle-library" options={{ href: null }} />
+      <Tabs.Screen name="community-programs" options={{ href: null }} />
     </Tabs>
   );
 }
