@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { ChevronLeft, Compass, Globe2, LockKeyhole, Star } from "lucide-react-native";
+import { ChevronLeft, Compass, Globe2, LockKeyhole } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { Alert, FlatList, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -97,19 +97,30 @@ export default function Workout() {
             <TouchableOpacity onPress={() => router.push({ pathname: "/(app)/program/[id]", params: { id: item.id } })}>
               <Text style={styles.program}>{item.name}</Text>
             </TouchableOpacity>
-            <View style={styles.statusRow}>
-              <View style={styles.privateStatus}>
-                <LockKeyhole size={15} color={Colors.textSecondary} strokeWidth={2.3} />
-                <Text style={styles.privateText}>Privé</Text>
-              </View>
-              <View style={styles.statusSpacer} />
-              <TouchableOpacity onPress={() => handlePublish(item)} disabled={publishingId === item.id}>
-                <View style={styles.publishRow}>
-                  <Globe2 size={16} color={Colors.primary} strokeWidth={2.2} />
-                  <Text style={styles.publish}>{publishingId === item.id ? "Publication…" : "Publier dans la communauté"}</Text>
+
+            {item.is_published ? (
+              <View style={styles.statusRow}>
+                <View style={styles.publishedStatus}>
+                  <Globe2 size={15} color={Colors.primary} strokeWidth={2.3} />
+                  <Text style={styles.publishedText}>Publié dans la communauté</Text>
                 </View>
-              </TouchableOpacity>
-            </View>
+              </View>
+            ) : (
+              <View style={styles.statusRow}>
+                <View style={styles.privateStatus}>
+                  <LockKeyhole size={15} color={Colors.textSecondary} strokeWidth={2.3} />
+                  <Text style={styles.privateText}>Privé</Text>
+                </View>
+                <View style={styles.statusSpacer} />
+                <TouchableOpacity onPress={() => handlePublish(item)} disabled={publishingId === item.id}>
+                  <View style={styles.publishRow}>
+                    <Globe2 size={16} color={Colors.primary} strokeWidth={2.2} />
+                    <Text style={styles.publish}>{publishingId === item.id ? "Publication…" : "Publier dans la communauté"}</Text>
+                  </View>
+                </TouchableOpacity>
+              </View>
+            )}
+
             <View style={styles.programActions}>
               <TouchableOpacity onPress={() => handleDelete(item.id)}><Text style={styles.delete}>Supprimer</Text></TouchableOpacity>
             </View>
@@ -138,6 +149,8 @@ const styles = StyleSheet.create({
   statusRow: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
   privateStatus: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 5, paddingHorizontal: 9, borderRadius: 10, backgroundColor: Colors.surfaceLight },
   privateText: { color: Colors.textSecondary, fontWeight: "800", fontSize: 12 },
+  publishedStatus: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 5, paddingHorizontal: 9, borderRadius: 10, backgroundColor: "#F1ECFF" },
+  publishedText: { color: Colors.primary, fontWeight: "800", fontSize: 12 },
   statusSpacer: { flex: 1 },
   publishRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   publish: { color: Colors.primary, fontWeight: "800", fontSize: 13 },
