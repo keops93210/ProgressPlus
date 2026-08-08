@@ -20,25 +20,23 @@ export default function Counter({
 }: CounterProps) {
   return (
     <>
-      <Text style={styles.title}>
-        {title}
-      </Text>
+      <Text style={styles.title}>{title}</Text>
 
       <View style={styles.row}>
-<CounterButton
-  label="+"
-  onPress={onIncrease}
-/>
+        <CounterButton
+          label="−"
+          onPress={onDecrease}
+        />
 
-<AnimatedNumber
-  value={value}
-  suffix={suffix}
-/>
+        <AnimatedNumber
+          value={value}
+          suffix={suffix}
+        />
 
-<CounterButton
-  label="−"
-  onPress={onDecrease}
-/>
+        <CounterButton
+          label="+"
+          onPress={onIncrease}
+        />
       </View>
     </>
   );
