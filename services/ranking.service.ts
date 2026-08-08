@@ -45,7 +45,12 @@ export function getRankProgress(score: number) {
   if (next === null) return { current, next: null, percent: 1, pointsToNext: 0 };
   const span = next - current.min;
   const percent = Math.min(1, Math.max(0, (score - current.min) / span));
-  return { current, next: RANKS.find((rank) => rank.min === next) ?? null, percent, pointsToNext: Math.max(0, next - score) };
+  return {
+    current,
+    next: RANKS.find((rank) => rank.min === next) ?? null,
+    percent,
+    pointsToNext: Math.max(0, next - score),
+  };
 }
 
 export async function getRankingProfile(userId: string): Promise<RankingProfile> {
@@ -123,4 +128,17 @@ export async function getUserRankingPosition(userId: string) {
 
   if (error) throw error;
   return (count ?? 0) + 1;
+}
+
+export function calculateWorkoutPoints(input: {
+  volume: number;
+  totalSets: number;
+  isFirstSessionOfDay?: boolean;
+  personalRecords?: number;
+}) {
+  const volumePoints = Math.min(100, Math.floor(input.volume / 500));
+  const setPoints = Math.min(30, input.totalSets * 2);
+  const consistencyBonus = input.isFirstSessionOfDay ? 10 : 0;
+  const prBonus = Math.min(100, (input.personalRecords ?? 0) * 25);
+  return volumePoints + setPoints + consistencyBonus + prBonus;
 }
