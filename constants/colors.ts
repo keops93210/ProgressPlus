@@ -1,23 +1,21 @@
 const Colors = {
-  background: "#080C0A",
-  surface: "#111713",
-  surfaceLight: "#1B241E",
+  background: "#08070B",
+  surface: "#121016",
+  surfaceLight: "#1E1826",
 
-  // ProgressPlus brand — premium electric yellow
-  primary: "#FACC15",
-  primaryDark: "#EAB308",
-  primaryLight: "#FDE047",
+  primary: "#8B5CF6",
+  primaryDark: "#7C3AED",
+  primaryLight: "#A78BFA",
 
-  // Semantic colors stay independent from the brand color.
   success: "#4ADE80",
   warning: "#F59E0B",
   danger: "#EF4444",
 
-  text: "#F5F5F5",
-  textSecondary: "#A3A3A3",
-  textMuted: "#737373",
+  text: "#FFFFFF",
+  textSecondary: "#C4C0CC",
+  textMuted: "#85808F",
 
-  border: "#243029",
+  border: "#30283A",
 };
 
 export default Colors;
