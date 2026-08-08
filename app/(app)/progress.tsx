@@ -13,16 +13,16 @@ import Card from "@/components/ui/Card";
 import Colors from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthContext";
 import {
+  getPersonalRecords,
   getWorkoutHistory,
+  PersonalRecordItem,
   WorkoutHistoryItem,
 } from "@/services/workout-session.service";
 
 function formatDuration(seconds: number | null) {
   if (!seconds) return "—";
-
   const minutes = Math.floor(seconds / 60);
   const remainingSeconds = seconds % 60;
-
   if (minutes === 0) return `${remainingSeconds}s`;
   return `${minutes} min${remainingSeconds ? ` ${remainingSeconds}s` : ""}`;
 }
@@ -43,18 +43,23 @@ function formatDate(value: string) {
 export default function Progress() {
   const { user } = useAuth();
   const [history, setHistory] = useState<WorkoutHistoryItem[]>([]);
+  const [records, setRecords] = useState<PersonalRecordItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const loadHistory = useCallback(async () => {
+  const loadData = useCallback(async () => {
     if (!user) return;
 
     try {
       setLoading(true);
-      const data = await getWorkoutHistory(user.id);
-      setHistory(data);
+      const [historyData, recordsData] = await Promise.all([
+        getWorkoutHistory(user.id),
+        getPersonalRecords(user.id),
+      ]);
+      setHistory(historyData);
+      setRecords(recordsData);
     } catch (error) {
-      console.log("WORKOUT HISTORY ERROR =", error);
+      console.log("PROGRESS DATA ERROR =", error);
     } finally {
       setLoading(false);
     }
@@ -65,17 +70,22 @@ export default function Progress() {
 
     try {
       setRefreshing(true);
-      setHistory(await getWorkoutHistory(user.id));
+      const [historyData, recordsData] = await Promise.all([
+        getWorkoutHistory(user.id),
+        getPersonalRecords(user.id),
+      ]);
+      setHistory(historyData);
+      setRecords(recordsData);
     } catch (error) {
-      console.log("WORKOUT HISTORY REFRESH ERROR =", error);
+      console.log("PROGRESS REFRESH ERROR =", error);
     } finally {
       setRefreshing(false);
     }
   }, [user]);
 
   useEffect(() => {
-    loadHistory();
-  }, [loadHistory]);
+    loadData();
+  }, [loadData]);
 
   const stats = useMemo(() => {
     const completed = history.filter((session) => session.finished_at);
@@ -116,7 +126,7 @@ export default function Progress() {
           <View>
             <Text style={styles.title}>Ma progression</Text>
             <Text style={styles.subtitle}>
-              Tes séances terminées et ton volume d'entraînement.
+              Tes performances, tes records et ton historique d'entraînement.
             </Text>
 
             <View style={styles.statsRow}>
@@ -126,14 +136,12 @@ export default function Progress() {
                   <Text style={styles.statLabel}>Séances</Text>
                 </Card>
               </View>
-
               <View style={styles.statWrapper}>
                 <Card>
                   <Text style={styles.statValue}>{formatVolume(stats.volume)}</Text>
                   <Text style={styles.statLabel}>Volume</Text>
                 </Card>
               </View>
-
               <View style={styles.statWrapper}>
                 <Card>
                   <Text style={styles.statValue}>{stats.sets}</Text>
@@ -141,6 +149,27 @@ export default function Progress() {
                 </Card>
               </View>
             </View>
+
+            {records.length > 0 && (
+              <View>
+                <Text style={styles.sectionTitle}>🏆 Records personnels</Text>
+                <View style={styles.recordsGrid}>
+                  {records.map((record) => (
+                    <Card key={record.id} style={styles.recordCard}>
+                      <Text style={styles.recordExercise} numberOfLines={1}>
+                        {record.exercises?.name ?? "Exercice"}
+                      </Text>
+                      <Text style={styles.recordWeight}>
+                        {Number(record.weight).toLocaleString("fr-FR")} kg × {record.reps}
+                      </Text>
+                      <Text style={styles.record1rm}>
+                        1RM estimé : {Number(record.estimated_1rm ?? 0).toLocaleString("fr-FR")} kg
+                      </Text>
+                    </Card>
+                  ))}
+                </View>
+              </View>
+            )}
 
             <Text style={styles.sectionTitle}>Historique</Text>
           </View>
@@ -233,7 +262,29 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "800",
     marginTop: 20,
-    marginBottom: 4,
+    marginBottom: 10,
+  },
+  recordsGrid: {
+    gap: 10,
+  },
+  recordCard: {
+    padding: 16,
+  },
+  recordExercise: {
+    color: Colors.text,
+    fontSize: 16,
+    fontWeight: "800",
+  },
+  recordWeight: {
+    color: Colors.primary,
+    fontSize: 18,
+    fontWeight: "800",
+    marginTop: 6,
+  },
+  record1rm: {
+    color: Colors.textSecondary,
+    fontSize: 12,
+    marginTop: 4,
   },
   sessionHeader: {
     flexDirection: "row",
