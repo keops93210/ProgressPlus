@@ -122,3 +122,40 @@ export async function getLastPerformance(
     reps: Number(data.reps) || 0,
   };
 }
+
+export interface WorkoutHistoryItem {
+  id: string;
+  program_id: string;
+  started_at: string;
+  finished_at: string | null;
+  duration_seconds: number | null;
+  total_volume: number | null;
+  total_sets: number | null;
+  workout_programs: { name: string } | null;
+}
+
+export async function getWorkoutHistory(
+  userId: string,
+  limit = 20
+): Promise<WorkoutHistoryItem[]> {
+  const { data, error } = await supabase
+    .from("workout_sessions")
+    .select(`
+      id,
+      program_id,
+      started_at,
+      finished_at,
+      duration_seconds,
+      total_volume,
+      total_sets,
+      workout_programs (name)
+    `)
+    .eq("user_id", userId)
+    .not("finished_at", "is", null)
+    .order("finished_at", { ascending: false })
+    .limit(limit);
+
+  if (error) throw error;
+
+  return (data ?? []) as unknown as WorkoutHistoryItem[];
+}
