@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { ChevronLeft, Compass, Globe2 } from "lucide-react-native";
+import { ChevronLeft, Compass, Globe2, LockKeyhole, Star } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { Alert, FlatList, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -23,6 +23,7 @@ export default function Workout() {
   async function loadPrograms() {
     if (!user) return;
     try { setLoading(true); setPrograms((await getPrograms(user.id)) ?? []); }
+    catch (error: any) { Alert.alert("Erreur", error.message); }
     finally { setLoading(false); }
   }
 
@@ -34,9 +35,27 @@ export default function Workout() {
   }
 
   async function handlePublish(program: WorkoutProgram) {
-    try { setPublishingId(program.id); await publishCommunityProgram(program.id); }
-    catch (error: any) { Alert.alert("Erreur", error.message); }
-    finally { setPublishingId(null); }
+    Alert.alert(
+      "Publier dans la communauté",
+      "Ton programme sera partagé gratuitement avec les autres utilisateurs. Tu pourras ensuite le retrouver dans la communauté.",
+      [
+        { text: "Annuler", style: "cancel" },
+        {
+          text: "Publier",
+          onPress: async () => {
+            try {
+              setPublishingId(program.id);
+              await publishCommunityProgram(program.id);
+              await loadPrograms();
+            } catch (error: any) {
+              Alert.alert("Erreur", error.message);
+            } finally {
+              setPublishingId(null);
+            }
+          },
+        },
+      ],
+    );
   }
 
   async function handleDelete(id: string) {
@@ -78,10 +97,20 @@ export default function Workout() {
             <TouchableOpacity onPress={() => router.push({ pathname: "/(app)/program/[id]", params: { id: item.id } })}>
               <Text style={styles.program}>{item.name}</Text>
             </TouchableOpacity>
-            <View style={styles.programActions}>
+            <View style={styles.statusRow}>
+              <View style={styles.privateStatus}>
+                <LockKeyhole size={15} color={Colors.textSecondary} strokeWidth={2.3} />
+                <Text style={styles.privateText}>Privé</Text>
+              </View>
+              <View style={styles.statusSpacer} />
               <TouchableOpacity onPress={() => handlePublish(item)} disabled={publishingId === item.id}>
-                <View style={styles.publishRow}><Globe2 size={16} color={Colors.primary} /><Text style={styles.publish}>{publishingId === item.id ? "Publication…" : "Publier gratuitement"}</Text></View>
+                <View style={styles.publishRow}>
+                  <Globe2 size={16} color={Colors.primary} strokeWidth={2.2} />
+                  <Text style={styles.publish}>{publishingId === item.id ? "Publication…" : "Publier dans la communauté"}</Text>
+                </View>
               </TouchableOpacity>
+            </View>
+            <View style={styles.programActions}>
               <TouchableOpacity onPress={() => handleDelete(item.id)}><Text style={styles.delete}>Supprimer</Text></TouchableOpacity>
             </View>
           </Card>
@@ -106,9 +135,13 @@ const styles = StyleSheet.create({
   communityArrow: { color: Colors.primary, fontSize: 28, fontWeight: "400", marginLeft: 8 },
   input: { height: 56, borderRadius: 16, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, color: Colors.text, paddingHorizontal: 16, marginBottom: 18, fontSize: 16 },
   program: { color: Colors.text, fontSize: 20, fontWeight: "700", marginBottom: 12 },
-  programActions: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  statusRow: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
+  privateStatus: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 5, paddingHorizontal: 9, borderRadius: 10, backgroundColor: Colors.surfaceLight },
+  privateText: { color: Colors.textSecondary, fontWeight: "800", fontSize: 12 },
+  statusSpacer: { flex: 1 },
   publishRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   publish: { color: Colors.primary, fontWeight: "800", fontSize: 13 },
+  programActions: { flexDirection: "row", justifyContent: "flex-end", alignItems: "center" },
   delete: { color: "#DC2626", fontWeight: "700" },
   empty: { color: Colors.textSecondary, textAlign: "center", marginTop: 40 },
 });
