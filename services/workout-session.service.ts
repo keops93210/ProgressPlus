@@ -52,6 +52,7 @@ export async function saveWorkoutSet(
       set_number: setNumber,
       weight,
       reps,
+      completed: true,
     })
     .select()
     .single();
@@ -61,9 +62,7 @@ export async function saveWorkoutSet(
   return data;
 }
 
-export async function getWorkoutSession(
-  sessionId: string
-) {
+export async function getWorkoutSession(sessionId: string) {
   const { data, error } = await supabase
     .from("workout_sessions")
     .select(`
@@ -77,9 +76,8 @@ export async function getWorkoutSession(
 
   return data;
 }
-export async function getWorkoutExercises(
-  programId: string
-) {
+
+export async function getWorkoutExercises(programId: string) {
   const { data, error } = await supabase
     .from("program_exercises")
     .select(`
@@ -89,11 +87,38 @@ export async function getWorkoutExercises(
     .eq("program_id", programId)
     .order("position");
 
-  console.log("PROGRAM ID =", programId);
-  console.log("DATA =", data);
-  console.log("ERROR =", error);
-
   if (error) throw error;
 
   return data;
+}
+
+export async function getLastPerformance(
+  userId: string,
+  exerciseId: string
+): Promise<{ weight: number; reps: number } | null> {
+  const { data, error } = await supabase
+    .from("workout_sets")
+    .select(`
+      weight,
+      reps,
+      created_at,
+      workout_sessions!inner (
+        user_id,
+        finished_at
+      )
+    `)
+    .eq("exercise_id", exerciseId)
+    .eq("workout_sessions.user_id", userId)
+    .not("workout_sessions.finished_at", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data) return null;
+
+  return {
+    weight: Number(data.weight) || 0,
+    reps: Number(data.reps) || 0,
+  };
 }
