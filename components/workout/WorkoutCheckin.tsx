@@ -10,8 +10,11 @@ export type CheckinValues = {
   pain: 1 | 2 | 3 | 4 | 5;
 };
 
+export type WorkoutCheckInValues = CheckinValues;
+
 type Props = {
-  onComplete: (values: CheckinValues) => void;
+  onComplete?: (values: CheckinValues) => void;
+  onContinue?: (values: CheckinValues) => void;
 };
 
 const options = [
@@ -57,7 +60,7 @@ function ScorePicker({
   );
 }
 
-export default function WorkoutCheckin({ onComplete }: Props) {
+export default function WorkoutCheckin({ onComplete, onContinue }: Props) {
   const [values, setValues] = useState<CheckinValues>({
     sleep: 3,
     energy: 3,
@@ -74,6 +77,11 @@ export default function WorkoutCheckin({ onComplete }: Props) {
     if (score <= 2 || values.pain >= 4) return "On va adapter la séance 🟠";
     return "Séance normale 🟡";
   }, [values]);
+
+  function handleSubmit() {
+    const callback = onComplete ?? onContinue;
+    callback?.(values);
+  }
 
   return (
     <View style={styles.container}>
@@ -93,7 +101,7 @@ export default function WorkoutCheckin({ onComplete }: Props) {
         <Text style={styles.resultText}>{readyLabel}</Text>
       </View>
 
-      <Pressable style={styles.button} onPress={() => onComplete(values)}>
+      <Pressable style={styles.button} onPress={handleSubmit}>
         <Text style={styles.buttonText}>COMMENCER MA SÉANCE</Text>
       </Pressable>
     </View>
@@ -109,93 +117,21 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     gap: 18,
   },
-  eyebrow: {
-    color: Colors.primary,
-    fontSize: 12,
-    fontWeight: "900",
-    letterSpacing: 1.2,
-  },
-  title: {
-    color: Colors.text,
-    fontSize: 25,
-    fontWeight: "900",
-    marginTop: -10,
-  },
-  subtitle: {
-    color: Colors.textSecondary,
-    fontSize: 14,
-    lineHeight: 20,
-    marginTop: -8,
-  },
-  question: {
-    gap: 8,
-  },
-  questionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "baseline",
-  },
-  questionTitle: {
-    color: Colors.text,
-    fontSize: 15,
-    fontWeight: "800",
-  },
-  hint: {
-    color: Colors.textMuted,
-    fontSize: 11,
-  },
-  options: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  option: {
-    flex: 1,
-    height: 42,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: Colors.surfaceLight,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  optionActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-  },
-  optionNumber: {
-    color: Colors.textSecondary,
-    fontSize: 15,
-    fontWeight: "800",
-  },
-  optionNumberActive: {
-    color: "#061008",
-  },
-  selectedLabel: {
-    color: Colors.textMuted,
-    fontSize: 11,
-  },
-  result: {
-    padding: 14,
-    borderRadius: 14,
-    backgroundColor: Colors.background,
-  },
-  resultText: {
-    color: Colors.text,
-    fontSize: 14,
-    fontWeight: "800",
-    textAlign: "center",
-  },
-  button: {
-    minHeight: 52,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: Colors.primary,
-  },
-  buttonText: {
-    color: "#061008",
-    fontSize: 14,
-    fontWeight: "900",
-    letterSpacing: 0.4,
-  },
+  eyebrow: { color: Colors.primary, fontSize: 12, fontWeight: "900", letterSpacing: 1.2 },
+  title: { color: Colors.text, fontSize: 25, fontWeight: "900", marginTop: -10 },
+  subtitle: { color: Colors.textSecondary, fontSize: 14, lineHeight: 20, marginTop: -8 },
+  question: { gap: 8 },
+  questionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" },
+  questionTitle: { color: Colors.text, fontSize: 15, fontWeight: "800" },
+  hint: { color: Colors.textMuted, fontSize: 11 },
+  options: { flexDirection: "row", gap: 8 },
+  option: { flex: 1, height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: Colors.surfaceLight, borderWidth: 1, borderColor: Colors.border },
+  optionActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  optionNumber: { color: Colors.textSecondary, fontSize: 15, fontWeight: "800" },
+  optionNumberActive: { color: "#061008" },
+  selectedLabel: { color: Colors.textMuted, fontSize: 11 },
+  result: { padding: 14, borderRadius: 14, backgroundColor: Colors.background },
+  resultText: { color: Colors.text, fontSize: 14, fontWeight: "800", textAlign: "center" },
+  button: { minHeight: 52, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: Colors.primary },
+  buttonText: { color: "#061008", fontSize: 14, fontWeight: "900", letterSpacing: 0.4 },
 });
