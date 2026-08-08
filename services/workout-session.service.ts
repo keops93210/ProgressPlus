@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabase";
 
-export async function startWorkoutSession(userId: string, programId: string) {
+export async function startWorkoutSession(userId: string | null, programId: string) {
+  if (!userId) throw new Error("Utilisateur non connecté.");
   const { data: activeSession, error: activeError } = await supabase.from("workout_sessions").select("*").eq("user_id", userId).eq("program_id", programId).is("finished_at", null).order("started_at", { ascending: false }).limit(1).maybeSingle();
   if (activeError) throw activeError;
   if (activeSession) return activeSession;
@@ -60,7 +61,8 @@ export async function getWorkoutExercises(programId: string) {
   return data;
 }
 
-export async function getLastPerformance(userId: string, exerciseId: string): Promise<{ weight: number; reps: number } | null> {
+export async function getLastPerformance(userId: string | null, exerciseId: string): Promise<{ weight: number; reps: number } | null> {
+  if (!userId) throw new Error("Utilisateur non connecté.");
   const { data, error } = await supabase.from("workout_sets").select(`weight, reps, created_at, workout_sessions!inner (user_id, finished_at)`).eq("exercise_id", exerciseId).eq("workout_sessions.user_id", userId).not("workout_sessions.finished_at", "is", null).order("created_at", { ascending: false }).limit(1).maybeSingle();
   if (error) throw error;
   if (!data) return null;
@@ -70,7 +72,8 @@ export async function getLastPerformance(userId: string, exerciseId: string): Pr
 export interface ProgressionRecommendation { action: "increase_weight" | "keep_weight" | "increase_reps" | "start"; currentWeight: number; recommendedWeight: number; currentReps: number; recommendedReps: number; minReps: number; maxReps: number; completedSets: number; message: string; }
 type ProgressionSet = { weight: number; reps: number; set_number: number };
 
-export async function getProgressionRecommendation(userId: string, exerciseId: string, minReps: number, maxReps: number, plannedSets: number): Promise<ProgressionRecommendation> {
+export async function getProgressionRecommendation(userId: string | null, exerciseId: string, minReps: number, maxReps: number, plannedSets: number): Promise<ProgressionRecommendation> {
+  if (!userId) throw new Error("Utilisateur non connecté.");
   const { data: latestSet, error: latestSetError } = await supabase.from("workout_sets").select("session_id, workout_sessions!inner(id, user_id, finished_at)").eq("exercise_id", exerciseId).eq("workout_sessions.user_id", userId).not("workout_sessions.finished_at", "is", null).order("created_at", { ascending: false }).limit(1).maybeSingle();
   if (latestSetError) throw latestSetError;
   if (!latestSet) return { action: "start", currentWeight: 0, recommendedWeight: 0, currentReps: minReps, recommendedReps: minReps, minReps, maxReps, completedSets: 0, message: `Commence à ${minReps}–${maxReps} répétitions et trouve ton poids de travail.` };
