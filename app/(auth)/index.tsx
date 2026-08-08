@@ -6,7 +6,6 @@ import {
 } from "lucide-react-native";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import Button from "@/components/ui/Button";
 import Colors from "@/constants/colors";
 
 export default function WelcomeScreen() {
@@ -26,32 +25,20 @@ export default function WelcomeScreen() {
       </View>
 
       <View style={styles.buttons}>
-        <Button
-          title="COMMENCER"
-          onPress={() => router.push("/(auth)/register")}
-        />
-
-        <View style={styles.separator}>
-          <View style={styles.separatorLine} />
-          <Text style={styles.separatorText}>OU</Text>
-          <View style={styles.separatorLine} />
-        </View>
-
         <Pressable
           style={({ pressed }) => [
-            styles.outlineButton,
+            styles.primaryButton,
             pressed && styles.pressed,
           ]}
           onPress={() => router.push("/(auth)/login")}
         >
-          <LogIn size={22} color={Colors.primary} strokeWidth={2.4} />
-          <Text style={styles.outlineButtonText}>Se connecter</Text>
+          <LogIn size={22} color="#FFFFFF" strokeWidth={2.4} />
+          <Text style={styles.primaryButtonText}>Se connecter</Text>
         </Pressable>
 
         <Pressable
           style={({ pressed }) => [
             styles.outlineButton,
-            styles.secondaryButton,
             pressed && styles.pressed,
           ]}
           onPress={() => router.push("/(auth)/register")}
@@ -108,39 +95,32 @@ const styles = StyleSheet.create({
     gap: 14,
   },
 
-  separator: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    marginVertical: 2,
-  },
-
-  separatorLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: Colors.border,
-  },
-
-  separatorText: {
-    color: Colors.textMuted,
-    fontSize: 14,
-    fontWeight: "700",
-  },
-
-  outlineButton: {
+  primaryButton: {
     height: 62,
     borderRadius: 18,
-    borderWidth: 1.5,
-    borderColor: Colors.primary,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: Colors.primary,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 14,
   },
 
-  secondaryButton: {
+  primaryButtonText: {
+    color: "#FFFFFF",
+    fontSize: 18,
+    fontWeight: "800",
+  },
+
+  outlineButton: {
+    height: 62,
+    borderRadius: 18,
+    borderWidth: 1.5,
     borderColor: Colors.border,
+    backgroundColor: "#FFFFFF",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 14,
   },
 
   outlineButtonText: {
