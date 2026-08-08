@@ -43,13 +43,15 @@ export default function CommunityPrograms() {
   const [refreshing, setRefreshing] = useState(false);
   const [downloading, setDownloading] = useState<string | null>(null);
   const [ratingId, setRatingId] = useState<string | null>(null);
+  const [favoriteId, setFavoriteId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
       const data = await getCommunityPrograms(sort);
       setPrograms(data);
-    } catch {
+    } catch (error: any) {
       setPrograms([]);
+      Alert.alert("Erreur", error?.message ?? "Impossible de charger la communauté.");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -64,10 +66,10 @@ export default function CommunityPrograms() {
     try {
       setDownloading(program.id);
       await downloadCommunityProgram(program.id);
-      Alert.alert("Programme ajouté", "Le programme a été ajouté à Mes programmes.");
+      Alert.alert("Programme ajouté", `« ${program.name} » a été ajouté à Mes programmes.`);
       await load();
     } catch (error: any) {
-      Alert.alert("Impossible d'ajouter le programme", error?.message ?? "Une erreur est survenue.");
+      Alert.alert("Erreur", error?.message ?? "Impossible d'ajouter ce programme.");
     } finally {
       setDownloading(null);
     }
@@ -75,23 +77,32 @@ export default function CommunityPrograms() {
 
   async function handleFavorite(program: CommunityProgram) {
     try {
-      await toggleCommunityFavorite(program.id);
+      setFavoriteId(program.id);
+      const added = await toggleCommunityFavorite(program.id);
+      Alert.alert(added ? "Ajouté aux favoris" : "Retiré des favoris", added ? "Ce programme est maintenant dans tes favoris." : "Ce programme a été retiré de tes favoris.");
       await load();
     } catch (error: any) {
-      Alert.alert("Impossible de modifier le favori", error?.message ?? "Une erreur est survenue.");
+      Alert.alert("Erreur", error?.message ?? "Impossible de modifier les favoris.");
+    } finally {
+      setFavoriteId(null);
     }
   }
 
-  async function handleRating(program: CommunityProgram, rating: number) {
-    try {
-      setRatingId(program.id);
-      await rateCommunityProgram(program.id, rating);
-      await load();
-    } catch (error: any) {
-      Alert.alert("Impossible d'enregistrer la note", error?.message ?? "Une erreur est survenue.");
-    } finally {
-      setRatingId(null);
-    }
+  async function handleRating(program: CommunityProgram) {
+    Alert.alert("Noter le programme", "Choisis une note de 1 à 5 étoiles.", [1, 2, 3, 4, 5].map((value) => ({
+      text: `${value} ${value === 1 ? "étoile" : "étoiles"}`,
+      onPress: async () => {
+        try {
+          setRatingId(program.id);
+          await rateCommunityProgram(program.id, value);
+          await load();
+        } catch (error: any) {
+          Alert.alert("Erreur", error?.message ?? "Impossible d'enregistrer la note.");
+        } finally {
+          setRatingId(null);
+        }
+      },
+    })));
   }
 
   return (
@@ -110,11 +121,7 @@ export default function CommunityPrograms() {
         }
       >
         <View style={styles.header}>
-          <Pressable
-            onPress={() => router.back()}
-            hitSlop={12}
-            style={({ pressed }) => [styles.back, pressed && styles.pressed]}
-          >
+          <Pressable onPress={() => router.back()} hitSlop={12} style={({ pressed }) => [styles.back, pressed && styles.pressed]}>
             <ChevronLeft size={27} color={Colors.text} strokeWidth={2.5} />
           </Pressable>
           <View style={styles.headerCopy}>
@@ -127,14 +134,8 @@ export default function CommunityPrograms() {
           {filters.map((filter) => {
             const active = sort === filter.key;
             return (
-              <Pressable
-                key={filter.key}
-                onPress={() => setSort(filter.key)}
-                style={({ pressed }) => [styles.filter, active && styles.filterActive, pressed && styles.pressed]}
-              >
-                <Text style={[styles.filterText, active && styles.filterTextActive]}>
-                  {filter.label}
-                </Text>
+              <Pressable key={filter.key} onPress={() => setSort(filter.key)} style={({ pressed }) => [styles.filter, active && styles.filterActive, pressed && styles.pressed]}>
+                <Text style={[styles.filterText, active && styles.filterTextActive]}>{filter.label}</Text>
               </Pressable>
             );
           })}
@@ -158,9 +159,7 @@ export default function CommunityPrograms() {
         ) : programs.length === 0 ? (
           <View style={styles.empty}>
             <Text style={styles.emptyTitle}>La communauté démarre ici</Text>
-            <Text style={styles.emptyText}>
-              Publie un programme pour devenir l'un des premiers créateurs Progress+.
-            </Text>
+            <Text style={styles.emptyText}>Publie un programme pour devenir l'un des premiers créateurs Progress+.</Text>
           </View>
         ) : (
           programs.map((program, index) => (
@@ -168,84 +167,39 @@ export default function CommunityPrograms() {
               <View style={[styles.rankBadge, index === 0 && styles.rankBadgeFeatured]}>
                 <Text style={[styles.rankText, index === 0 && styles.rankTextFeatured]}>{index + 1}</Text>
               </View>
-
               <View style={styles.cardBody}>
                 <View style={styles.titleRow}>
                   <View style={styles.titleCopy}>
                     <Text style={styles.programName}>{program.name}</Text>
                     <Text style={styles.creator}>par {program.creator_name}</Text>
                   </View>
-                  {index === 0 && sort === "weekly" ? (
-                    <View style={styles.featuredBadge}>
-                      <Text style={styles.featuredText}>À la une</Text>
-                    </View>
-                  ) : null}
+                  {index === 0 && sort === "weekly" ? <View style={styles.featuredBadge}><Text style={styles.featuredText}>À la une</Text></View> : null}
                 </View>
 
-                <Text style={styles.description} numberOfLines={2}>
-                  {program.description || "Programme d'entraînement Progress+."}
-                </Text>
+                <Text style={styles.description} numberOfLines={2}>{program.description || "Programme d'entraînement Progress+."}</Text>
 
                 <View style={styles.metaRow}>
-                  <View style={styles.metaItem}>
+                  <Pressable onPress={() => handleRating(program)} disabled={ratingId === program.id} style={styles.metaItem}>
                     <Star size={15} color={Colors.primary} fill={Colors.primary} />
-                    <Text style={styles.metaText}>
-                      {program.rating_average ? program.rating_average.toFixed(1) : "Nouveau"}
-                    </Text>
-                    {program.ratings_count > 0 ? (
-                      <Text style={styles.metaCount}>({program.ratings_count})</Text>
-                    ) : null}
-                  </View>
-                  <View style={styles.metaItem}>
-                    <Download size={15} color={Colors.textSecondary} />
-                    <Text style={styles.metaText}>{program.downloads_count}</Text>
-                  </View>
+                    <Text style={styles.metaText}>{program.rating_average ? program.rating_average.toFixed(1) : "Nouveau"}</Text>
+                    {program.ratings_count > 0 ? <Text style={styles.metaCount}>({program.ratings_count})</Text> : null}
+                  </Pressable>
+                  <View style={styles.metaItem}><Download size={15} color={Colors.textSecondary} /><Text style={styles.metaText}>{program.downloads_count}</Text></View>
                   <Text style={styles.category}>{program.category}</Text>
                 </View>
 
-                <View style={styles.ratingRow}>
-                  <Text style={styles.rateLabel}>Ta note</Text>
-                  <View style={styles.ratingStars}>
-                    {[1, 2, 3, 4, 5].map((value) => (
-                      <Pressable
-                        key={value}
-                        onPress={() => handleRating(program, value)}
-                        disabled={ratingId === program.id}
-                        hitSlop={4}
-                      >
-                        <Star
-                          size={17}
-                          color={Colors.primary}
-                          fill={ratingId === program.id ? "transparent" : Colors.primary}
-                        />
-                      </Pressable>
-                    ))}
-                  </View>
-                </View>
-
                 <View style={styles.actions}>
-                  <Pressable
-                    onPress={() => handleDownload(program)}
-                    disabled={downloading === program.id}
-                    style={({ pressed }) => [styles.downloadButton, pressed && styles.pressed]}
-                  >
-                    {downloading === program.id ? (
-                      <ActivityIndicator color="#FFFFFF" />
-                    ) : (
-                      <>
-                        <Download size={18} color="#FFFFFF" />
-                        <Text style={styles.downloadText}>AJOUTER À MES PROGRAMMES</Text>
-                      </>
-                    )}
+                  <Pressable onPress={() => handleDownload(program)} disabled={downloading === program.id} style={({ pressed }) => [styles.downloadButton, pressed && styles.pressed]}>
+                    {downloading === program.id ? <ActivityIndicator color="#FFFFFF" /> : <><Download size={18} color="#FFFFFF" /><Text style={styles.downloadText}>AJOUTER À MES PROGRAMMES</Text></>}
                   </Pressable>
-                  <Pressable
-                    onPress={() => handleFavorite(program)}
-                    hitSlop={6}
-                    style={({ pressed }) => [styles.favoriteButton, pressed && styles.pressed]}
-                  >
-                    <Heart size={19} color={Colors.primary} />
+                  <Pressable onPress={() => handleFavorite(program)} disabled={favoriteId === program.id} hitSlop={6} style={({ pressed }) => [styles.favoriteButton, pressed && styles.pressed]}>
+                    {favoriteId === program.id ? <ActivityIndicator color={Colors.primary} /> : <Heart size={19} color={Colors.primary} />}
                   </Pressable>
                 </View>
+                <Pressable onPress={() => handleRating(program)} disabled={ratingId === program.id} style={({ pressed }) => [styles.ratingAction, pressed && styles.pressed]}>
+                  <Star size={15} color={Colors.primary} />
+                  <Text style={styles.ratingActionText}>{ratingId === program.id ? "Enregistrement…" : "Noter ce programme"}</Text>
+                </Pressable>
               </View>
             </View>
           ))
@@ -293,13 +247,12 @@ const styles = StyleSheet.create({
   metaText: { color: Colors.textSecondary, fontSize: 12, fontWeight: "700" },
   metaCount: { color: Colors.textMuted, fontSize: 11 },
   category: { color: Colors.primary, fontSize: 11, fontWeight: "800", marginLeft: "auto" },
-  ratingRow: { flexDirection: "row", alignItems: "center", marginTop: 11 },
-  rateLabel: { color: Colors.textMuted, fontSize: 11, fontWeight: "700", marginRight: 8 },
-  ratingStars: { flexDirection: "row", gap: 2 },
   actions: { flexDirection: "row", gap: 8, marginTop: 13 },
   downloadButton: { flex: 1, minHeight: 44, borderRadius: 13, backgroundColor: Colors.primary, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, paddingHorizontal: 10 },
   downloadText: { color: "#FFFFFF", fontSize: 11, fontWeight: "900" },
   favoriteButton: { width: 44, borderRadius: 13, borderWidth: 1, borderColor: Colors.border, alignItems: "center", justifyContent: "center" },
+  ratingAction: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 10, paddingVertical: 7 },
+  ratingActionText: { color: Colors.primary, fontSize: 12, fontWeight: "800" },
   empty: { alignItems: "center", padding: 45 },
   emptyTitle: { color: Colors.text, fontSize: 20, fontWeight: "900", textAlign: "center" },
   emptyText: { color: Colors.textSecondary, textAlign: "center", marginTop: 8, lineHeight: 20 },
