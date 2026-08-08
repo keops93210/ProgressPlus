@@ -9,6 +9,7 @@ import Header from "@/components/ui/Header";
 import Colors from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthContext";
 import { saveRecoveryCheckin, getRecoveryAdvice } from "@/services/recovery.service";
+import { awardWorkoutPoints } from "@/services/ranking.service";
 import {
   finishWorkoutSession,
   getLastPerformance,
@@ -20,10 +21,10 @@ import {
   ProgressionRecommendation,
 } from "@/services/workout-session.service";
 import { ProgramExercise } from "@/types/programExercise";
+import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
-import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useLocalSearchParams } from "expo-router";
 
 export default function WorkoutSessionScreen() {
   const { programId } = useLocalSearchParams<{ programId: string }>();
@@ -47,6 +48,8 @@ export default function WorkoutSessionScreen() {
   const [recommendationLoading, setRecommendationLoading] = useState(false);
   const [checkInDone, setCheckInDone] = useState(false);
   const [readinessMessage, setReadinessMessage] = useState<string | null>(null);
+  const [completed, setCompleted] = useState(false);
+  const [earnedPoints, setEarnedPoints] = useState<number | null>(null);
 
   const exercise = exercises[currentExerciseIndex];
   const totalSets = exercise?.sets ?? 0;
@@ -197,10 +200,25 @@ export default function WorkoutSessionScreen() {
         setIsResting(true);
         return;
       }
+
       const duration = sessionStartedAt ? Math.max(0, Math.floor((Date.now() - sessionStartedAt) / 1000)) : 0;
       await finishWorkoutSession(sessionId, duration, nextVolume, nextTotalSets);
+
+      if (user) {
+        try {
+          const result = await awardWorkoutPoints(user.id, {
+            volume: nextVolume,
+            totalSets: nextTotalSets,
+            personalRecords: 0,
+          });
+          setEarnedPoints(result.pointsEarned);
+        } catch (rankingError) {
+          console.log("RANKING AWARD ERROR =", rankingError);
+        }
+      }
+
       setIsResting(false);
-      Alert.alert("Bravo 🎉", "Séance terminée !");
+      setCompleted(true);
     } catch (error) {
       console.log("SAVE SET ERROR =", error);
       Alert.alert("Erreur", "Impossible d'enregistrer la série.");
@@ -215,7 +233,29 @@ export default function WorkoutSessionScreen() {
     setReps(Math.min(exercise?.max_reps ?? recommendation.recommendedReps, Math.max(exercise?.min_reps ?? recommendation.recommendedReps, recommendation.recommendedReps)));
   }
 
-  if (loading) return <SafeAreaView style={styles.container}><Header title="Chargement..." /></SafeAreaView>;
+  if (loading) return <SafeAreaView style={styles.container}><Header title="Chargement..." />;</SafeAreaView>;
+
+  if (completed) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.completedScreen}>
+          <View style={styles.completedIcon}><Text style={styles.completedIconText}>✓</Text></View>
+          <Text style={styles.completedEyebrow}>SÉANCE TERMINÉE</Text>
+          <Text style={styles.completedTitle}>Beau travail.</Text>
+          <Text style={styles.completedText}>Toutes tes séries ont été enregistrées. Ta progression a été mise à jour.</Text>
+          <View style={styles.completedStats}>
+            <View style={styles.completedStat}><Text style={styles.completedStatValue}>{completedTotalSets}</Text><Text style={styles.completedStatLabel}>séries</Text></View>
+            <View style={styles.completedDivider} />
+            <View style={styles.completedStat}><Text style={styles.completedStatValue}>{Math.round(completedVolume).toLocaleString("fr-FR")}</Text><Text style={styles.completedStatLabel}>kg volume</Text></View>
+            {earnedPoints !== null && <><View style={styles.completedDivider} /><View style={styles.completedStat}><Text style={styles.completedStatValue}>+{earnedPoints}</Text><Text style={styles.completedStatLabel}>points</Text></View></>}
+          </View>
+          <Pressable style={styles.completedButton} onPress={() => router.replace("/(app)/home")}>
+            <Text style={styles.completedButtonText}>RETOUR À L'ACCUEIL</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (!checkInDone) {
     return (
@@ -278,4 +318,17 @@ const styles = StyleSheet.create({
   recommendationLabel: { color: Colors.textSecondary, fontSize: 12 },
   recommendationValue: { color: Colors.text, fontSize: 22, fontWeight: "800", marginTop: 3 },
   recommendationAction: { color: Colors.primary, fontSize: 12, fontWeight: "900", marginTop: 16, letterSpacing: 0.5 },
+  completedScreen: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 18 },
+  completedIcon: { width: 78, height: 78, borderRadius: 39, backgroundColor: Colors.primary, alignItems: "center", justifyContent: "center", marginBottom: 24 },
+  completedIconText: { color: "#FFFFFF", fontSize: 42, fontWeight: "900" },
+  completedEyebrow: { color: Colors.primary, fontSize: 12, fontWeight: "900", letterSpacing: 1.8 },
+  completedTitle: { color: Colors.text, fontSize: 34, fontWeight: "900", marginTop: 6 },
+  completedText: { color: Colors.textSecondary, fontSize: 15, lineHeight: 22, textAlign: "center", marginTop: 10, maxWidth: 330 },
+  completedStats: { width: "100%", flexDirection: "row", alignItems: "center", justifyContent: "space-around", marginTop: 30, paddingVertical: 20, borderRadius: 20, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border },
+  completedStat: { flex: 1, alignItems: "center" },
+  completedStatValue: { color: Colors.text, fontSize: 21, fontWeight: "900" },
+  completedStatLabel: { color: Colors.textSecondary, fontSize: 11, marginTop: 4 },
+  completedDivider: { width: 1, height: 34, backgroundColor: Colors.border },
+  completedButton: { width: "100%", minHeight: 56, borderRadius: 18, backgroundColor: Colors.primary, alignItems: "center", justifyContent: "center", marginTop: 24 },
+  completedButtonText: { color: "#FFFFFF", fontSize: 14, fontWeight: "900", letterSpacing: 0.5 },
 });
