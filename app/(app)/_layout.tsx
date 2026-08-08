@@ -62,20 +62,25 @@ export default function AppLayout() {
       />
 
       {/* Cache les écrans qui ne doivent pas apparaître comme onglets */}
-<Tabs.Screen
-  name="program"
-  options={{ href: null }}
-/>
+      <Tabs.Screen
+        name="program"
+        options={{ href: null }}
+      />
 
-<Tabs.Screen
-  name="workout-session"
-  options={{ href: null }}
-/>
+      <Tabs.Screen
+        name="workout-session"
+        options={{ href: null }}
+      />
 
-<Tabs.Screen
-  name="exercise"
-  options={{ href: null }}
-/>
+      <Tabs.Screen
+        name="exercise"
+        options={{ href: null }}
+      />
+
+      <Tabs.Screen
+        name="muscle-library"
+        options={{ href: null }}
+      />
     </Tabs>
   );
 }
