@@ -3,10 +3,12 @@ const Colors = {
   surface: "#111713",
   surfaceLight: "#1B241E",
 
-  primary: "#22C55E",
-  primaryDark: "#16A34A",
-  primaryLight: "#4ADE80",
+  // ProgressPlus brand — premium electric yellow
+  primary: "#FACC15",
+  primaryDark: "#EAB308",
+  primaryLight: "#FDE047",
 
+  // Semantic colors stay independent from the brand color.
   success: "#4ADE80",
   warning: "#F59E0B",
   danger: "#EF4444",
