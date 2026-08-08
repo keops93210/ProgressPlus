@@ -10,9 +10,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   finishWorkoutSession,
   getLastPerformance,
+  getProgressionRecommendation,
   getWorkoutExercises,
   saveWorkoutSet,
   startWorkoutSession,
+  ProgressionRecommendation,
 } from "@/services/workout-session.service";
 import { ProgramExercise } from "@/types/programExercise";
 import { useEffect, useState } from "react";
@@ -39,6 +41,8 @@ export default function WorkoutSessionScreen() {
   const [completedTotalSets, setCompletedTotalSets] = useState(0);
   const [lastPerformance, setLastPerformance] = useState<{ weight: number; reps: number } | null>(null);
   const [lastPerformanceLoading, setLastPerformanceLoading] = useState(false);
+  const [recommendation, setRecommendation] = useState<ProgressionRecommendation | null>(null);
+  const [recommendationLoading, setRecommendationLoading] = useState(false);
 
   const exercise = exercises[currentExerciseIndex];
   const totalSets = exercise?.sets ?? 0;
@@ -63,6 +67,7 @@ export default function WorkoutSessionScreen() {
         setWeight(0);
         setReps(8);
         setLastPerformance(null);
+        setRecommendation(null);
 
         const data = await getWorkoutExercises(String(programId));
         if (cancelled) return;
@@ -93,31 +98,55 @@ export default function WorkoutSessionScreen() {
 
     let cancelled = false;
 
-    async function loadLastPerformance() {
+    async function loadExerciseData() {
       try {
         setLastPerformanceLoading(true);
-        const performance = await getLastPerformance(user.id, exercise.exercise_id);
+        setRecommendationLoading(true);
+        setLastPerformance(null);
+        setRecommendation(null);
+
+        const [performance, nextRecommendation] = await Promise.all([
+          getLastPerformance(user.id, exercise.exercise_id),
+          getProgressionRecommendation(
+            user.id,
+            exercise.exercise_id,
+            exercise.min_reps,
+            exercise.max_reps,
+            exercise.sets
+          ),
+        ]);
 
         if (cancelled) return;
 
         setLastPerformance(performance);
+        setRecommendation(nextRecommendation);
 
-        if (performance) {
+        if (nextRecommendation.action === "increase_weight") {
+          setWeight(nextRecommendation.recommendedWeight);
+          setReps(nextRecommendation.recommendedReps);
+        } else if (performance) {
           setWeight(performance.weight);
-          setReps(Math.min(exercise.max_reps, Math.max(exercise.min_reps, performance.reps)));
+          setReps(
+            Math.min(
+              exercise.max_reps,
+              Math.max(exercise.min_reps, performance.reps)
+            )
+          );
         } else {
           setWeight(0);
           setReps(Math.min(8, exercise.max_reps));
         }
       } catch (error) {
-        console.log("LAST PERFORMANCE ERROR =", error);
-        if (!cancelled) setLastPerformance(null);
+        console.log("EXERCISE PROGRESSION ERROR =", error);
       } finally {
-        if (!cancelled) setLastPerformanceLoading(false);
+        if (!cancelled) {
+          setLastPerformanceLoading(false);
+          setRecommendationLoading(false);
+        }
       }
     }
 
-    loadLastPerformance();
+    loadExerciseData();
 
     return () => {
       cancelled = true;
@@ -158,14 +187,23 @@ export default function WorkoutSessionScreen() {
     if (!exercise || !sessionId || saving) return;
 
     if (weight <= 0 || reps <= 0) {
-      Alert.alert("Série incomplète", "Indique un poids et un nombre de répétitions valides.");
+      Alert.alert(
+        "Série incomplète",
+        "Indique un poids et un nombre de répétitions valides."
+      );
       return;
     }
 
     try {
       setSaving(true);
 
-      await saveWorkoutSet(sessionId, exercise.exercise_id, currentSet, weight, reps);
+      await saveWorkoutSet(
+        sessionId,
+        exercise.exercise_id,
+        currentSet,
+        weight,
+        reps
+      );
 
       const nextVolume = completedVolume + weight * reps;
       const nextTotalSets = completedTotalSets + 1;
@@ -192,7 +230,12 @@ export default function WorkoutSessionScreen() {
         ? Math.max(0, Math.floor((Date.now() - sessionStartedAt) / 1000))
         : 0;
 
-      await finishWorkoutSession(sessionId, duration, nextVolume, nextTotalSets);
+      await finishWorkoutSession(
+        sessionId,
+        duration,
+        nextVolume,
+        nextTotalSets
+      );
 
       setIsResting(false);
       Alert.alert("Bravo 🎉", "Séance terminée !");
@@ -202,6 +245,24 @@ export default function WorkoutSessionScreen() {
     } finally {
       setSaving(false);
     }
+  }
+
+  function applyRecommendation() {
+    if (!recommendation) return;
+
+    if (recommendation.recommendedWeight > 0) {
+      setWeight(recommendation.recommendedWeight);
+    }
+
+    setReps(
+      Math.min(
+        exercise?.max_reps ?? recommendation.recommendedReps,
+        Math.max(
+          exercise?.min_reps ?? recommendation.recommendedReps,
+          recommendation.recommendedReps
+        )
+      )
+    );
   }
 
   if (loading) {
@@ -219,12 +280,17 @@ export default function WorkoutSessionScreen() {
         subtitle={`Série ${currentSet} / ${totalSets}`}
       />
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.content}
+      >
         {isResting && (
           <WorkoutRestCard
             time={formatTime(restTime)}
             onAdd15={() => setRestTime((time) => time + 15)}
-            onRemove15={() => setRestTime((time) => Math.max(0, time - 15))}
+            onRemove15={() =>
+              setRestTime((time) => Math.max(0, time - 15))
+            }
             onSkip={() => {
               setIsResting(false);
               setRestTime(exercise?.rest_seconds || 120);
@@ -235,7 +301,9 @@ export default function WorkoutSessionScreen() {
         <View style={styles.targetCard}>
           <Text style={styles.targetTitle}>Objectif</Text>
           <Text style={styles.targetValue}>
-            {exercise ? `${exercise.min_reps}–${exercise.max_reps} répétitions` : "—"}
+            {exercise
+              ? `${exercise.min_reps}–${exercise.max_reps} répétitions`
+              : "—"}
           </Text>
           <Text style={styles.targetRest}>
             Repos : {formatTime(exercise?.rest_seconds || 120)}
@@ -243,19 +311,87 @@ export default function WorkoutSessionScreen() {
         </View>
 
         {!lastPerformanceLoading && lastPerformance && (
-          <LastPerformance weight={lastPerformance.weight} reps={lastPerformance.reps} />
+          <LastPerformance
+            weight={lastPerformance.weight}
+            reps={lastPerformance.reps}
+          />
+        )}
+
+        {!recommendationLoading && recommendation && (
+          <View style={styles.recommendationCard}>
+            <View style={styles.recommendationHeader}>
+              <Text style={styles.recommendationEyebrow}>PROGRESSION+</Text>
+              <Text style={styles.recommendationBadge}>
+                {recommendation.action === "increase_weight"
+                  ? "↑ POIDS"
+                  : recommendation.action === "increase_reps"
+                    ? "↑ REPS"
+                    : "→ CONSOLIDER"}
+              </Text>
+            </View>
+
+            <Text style={styles.recommendationTitle}>
+              {recommendation.action === "increase_weight"
+                ? "Tu peux augmenter la charge 💪"
+                : recommendation.action === "increase_reps"
+                  ? "On cherche encore des reps"
+                  : "On consolide la charge"}
+            </Text>
+
+            <Text style={styles.recommendationMessage}>
+              {recommendation.message}
+            </Text>
+
+            {recommendation.action !== "start" && (
+              <View style={styles.recommendationValues}>
+                <View>
+                  <Text style={styles.recommendationLabel}>Prochaine cible</Text>
+                  <Text style={styles.recommendationValue}>
+                    {recommendation.recommendedWeight > 0
+                      ? `${recommendation.recommendedWeight} kg`
+                      : "—"}
+                  </Text>
+                </View>
+                <View>
+                  <Text style={styles.recommendationLabel}>Reps</Text>
+                  <Text style={styles.recommendationValue}>
+                    {recommendation.recommendedReps}
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            {recommendation.action !== "start" && (
+              <Text
+                style={styles.recommendationAction}
+                onPress={applyRecommendation}
+              >
+                UTILISER CETTE RECOMMANDATION
+              </Text>
+            )}
+          </View>
         )}
 
         <WorkoutWeightCard
           weight={weight}
           onIncrease={() => setWeight((value) => value + 2.5)}
-          onDecrease={() => setWeight((value) => Math.max(0, value - 2.5))}
+          onDecrease={() =>
+            setWeight((value) => Math.max(0, value - 2.5))
+          }
         />
 
         <WorkoutRepsCard
           reps={reps}
-          onIncrease={() => setReps((value) => Math.min(exercise?.max_reps ?? value + 1, value + 1))}
-          onDecrease={() => setReps((value) => Math.max(exercise?.min_reps ?? 1, value - 1))}
+          onIncrease={() =>
+            setReps((value) =>
+              Math.min(exercise?.max_reps ?? value + 1, value + 1)
+            )
+          }
+          onDecrease={() =>
+            setReps((value) =>
+              Math.max(exercise?.min_reps ?? 1, value - 1)
+            )
+          }
         />
 
         <WorkoutProgressCard
@@ -298,6 +434,8 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 16,
     backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   targetTitle: {
     color: Colors.textSecondary,
@@ -314,5 +452,65 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     fontSize: 14,
     marginTop: 6,
+  },
+  recommendationCard: {
+    padding: 18,
+    borderRadius: 18,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+  },
+  recommendationHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  recommendationEyebrow: {
+    color: Colors.primary,
+    fontSize: 12,
+    fontWeight: "900",
+    letterSpacing: 1,
+  },
+  recommendationBadge: {
+    color: Colors.textSecondary,
+    fontSize: 11,
+    fontWeight: "800",
+  },
+  recommendationTitle: {
+    color: Colors.text,
+    fontSize: 20,
+    fontWeight: "800",
+    marginTop: 10,
+  },
+  recommendationMessage: {
+    color: Colors.textSecondary,
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: 7,
+  },
+  recommendationValues: {
+    flexDirection: "row",
+    gap: 40,
+    marginTop: 16,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+  },
+  recommendationLabel: {
+    color: Colors.textSecondary,
+    fontSize: 12,
+  },
+  recommendationValue: {
+    color: Colors.text,
+    fontSize: 22,
+    fontWeight: "800",
+    marginTop: 3,
+  },
+  recommendationAction: {
+    color: Colors.primary,
+    fontSize: 12,
+    fontWeight: "900",
+    marginTop: 16,
+    letterSpacing: 0.5,
   },
 });
