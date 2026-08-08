@@ -10,16 +10,7 @@ import Colors from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthContext";
 import { saveRecoveryCheckin, getRecoveryAdvice } from "@/services/recovery.service";
 import { awardWorkoutPoints } from "@/services/ranking.service";
-import {
-  finishWorkoutSession,
-  getLastPerformance,
-  getProgressionRecommendation,
-  getWorkoutExercises,
-  getWorkoutSession,
-  saveWorkoutSet,
-  startWorkoutSession,
-  ProgressionRecommendation,
-} from "@/services/workout-session.service";
+import { finishWorkoutSession, getLastPerformance, getProgressionRecommendation, getWorkoutExercises, getWorkoutSession, saveWorkoutSet, startWorkoutSession, ProgressionRecommendation } from "@/services/workout-session.service";
 import { ProgramExercise } from "@/types/programExercise";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
@@ -233,7 +224,9 @@ export default function WorkoutSessionScreen() {
     setReps(Math.min(exercise?.max_reps ?? recommendation.recommendedReps, Math.max(exercise?.min_reps ?? recommendation.recommendedReps, recommendation.recommendedReps)));
   }
 
-  if (loading) return <SafeAreaView style={styles.container}><Header title="Chargement..." />;</SafeAreaView>;
+  if (loading) {
+    return <SafeAreaView style={styles.container}><Header title="Chargement..." /></SafeAreaView>;
+  }
 
   if (completed) {
     return (
