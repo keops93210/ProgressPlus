@@ -50,6 +50,13 @@ export async function publishCommunityProgram(
   return data as string;
 }
 
+export async function unpublishCommunityProgram(programId: string) {
+  const { error } = await supabase.rpc("unpublish_community_program", {
+    p_program_id: programId,
+  });
+  if (error) throw error;
+}
+
 export async function rateCommunityProgram(
   communityProgramId: string,
   rating: number,
