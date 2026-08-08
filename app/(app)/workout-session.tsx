@@ -58,13 +58,8 @@ export default function WorkoutSessionScreen() {
   const userId = user?.id ?? null;
 
   useEffect(() => {
-    if (!programId || !userId) {
-      setLoading(false);
-      return;
-    }
-
+    if (!programId || !userId) return;
     let cancelled = false;
-
     async function loadWorkout() {
       try {
         setLoading(true);
@@ -105,7 +100,6 @@ export default function WorkoutSessionScreen() {
         if (!cancelled) setLoading(false);
       }
     }
-
     loadWorkout();
     return () => {
       cancelled = true;
@@ -114,9 +108,7 @@ export default function WorkoutSessionScreen() {
 
   useEffect(() => {
     if (!exercise || !userId || !checkInDone) return;
-
     let cancelled = false;
-
     async function loadExerciseData() {
       try {
         setLastPerformanceLoading(true);
@@ -147,7 +139,6 @@ export default function WorkoutSessionScreen() {
         }
       }
     }
-
     loadExerciseData();
     return () => {
       cancelled = true;
@@ -223,15 +214,13 @@ export default function WorkoutSessionScreen() {
       const duration = sessionStartedAt ? Math.max(0, Math.floor((Date.now() - sessionStartedAt) / 1000)) : 0;
       await finishWorkoutSession(sessionId, duration, nextVolume, nextTotalSets);
 
-      try {
-        const result = await awardWorkoutPoints(userId, {
-          volume: nextVolume,
-          totalSets: nextTotalSets,
-          personalRecords: nextPersonalRecords,
-        });
-        setEarnedPoints(result.pointsEarned);
-      } catch (rankingError) {
-        console.log("RANKING AWARD ERROR =", rankingError);
+      if (userId) {
+        try {
+          const result = await awardWorkoutPoints(userId, { volume: nextVolume, totalSets: nextTotalSets, personalRecords: nextPersonalRecords });
+          setEarnedPoints(result.pointsEarned);
+        } catch (rankingError) {
+          console.log("RANKING AWARD ERROR =", rankingError);
+        }
       }
 
       setIsResting(false);
@@ -247,12 +236,7 @@ export default function WorkoutSessionScreen() {
   function applyRecommendation() {
     if (!recommendation) return;
     if (recommendation.recommendedWeight > 0) setWeight(recommendation.recommendedWeight);
-    setReps(
-      Math.min(
-        exercise?.max_reps ?? recommendation.recommendedReps,
-        Math.max(exercise?.min_reps ?? recommendation.recommendedReps, recommendation.recommendedReps)
-      )
-    );
+    setReps(Math.min(exercise?.max_reps ?? recommendation.recommendedReps, Math.max(exercise?.min_reps ?? recommendation.recommendedReps, recommendation.recommendedReps)));
   }
 
   if (loading) return <SafeAreaView style={styles.container}><Header title="Chargement..." /></SafeAreaView>;
@@ -315,11 +299,7 @@ export default function WorkoutSessionScreen() {
         <WorkoutRepsCard reps={reps} onIncrease={() => setReps((value) => Math.min(exercise?.max_reps ?? value + 1, value + 1))} onDecrease={() => setReps((value) => Math.max(exercise?.min_reps ?? 1, value - 1))} />
         <WorkoutProgressCard totalSets={totalSets} completedSets={completedSets} weight={weight} reps={reps} />
       </ScrollView>
-      <BottomButton
-        title={saving ? "ENREGISTREMENT..." : currentSet === totalSets ? currentExerciseIndex === exercises.length - 1 ? "TERMINER LA SÉANCE" : "EXERCICE SUIVANT" : "VALIDER LA SÉRIE"}
-        onPress={validateSet}
-        disabled={!exercise || saving}
-      />
+      <BottomButton title={saving ? "ENREGISTREMENT..." : currentSet === totalSets ? currentExerciseIndex === exercises.length - 1 ? "TERMINER LA SÉANCE" : "EXERCICE SUIVANT" : "VALIDER LA SÉRIE"} onPress={validateSet} disabled={!exercise || saving} />
     </SafeAreaView>
   );
 }
