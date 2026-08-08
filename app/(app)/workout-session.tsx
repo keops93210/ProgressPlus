@@ -2,19 +2,21 @@ import WorkoutProgressCard from "@/components/workout/WorkoutProgressCard";
 import WorkoutRepsCard from "@/components/workout/WorkoutRepsCard";
 import WorkoutRestCard from "@/components/workout/WorkoutRestCard";
 import WorkoutWeightCard from "@/components/workout/WorkoutWeightCard";
+import LastPerformance from "@/components/workout/LastPerformance";
 import BottomButton from "@/components/ui/BottomButton";
 import Header from "@/components/ui/Header";
 import Colors from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   finishWorkoutSession,
+  getLastPerformance,
   getWorkoutExercises,
   saveWorkoutSet,
   startWorkoutSession,
 } from "@/services/workout-session.service";
 import { ProgramExercise } from "@/types/programExercise";
 import { useEffect, useState } from "react";
-import { Alert, ScrollView, StyleSheet } from "react-native";
+import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams } from "expo-router";
 
@@ -29,12 +31,14 @@ export default function WorkoutSessionScreen() {
   const [exercises, setExercises] = useState<ProgramExercise[]>([]);
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
   const [currentSet, setCurrentSet] = useState(1);
-  const [weight, setWeight] = useState(80);
+  const [weight, setWeight] = useState(0);
   const [reps, setReps] = useState(8);
   const [restTime, setRestTime] = useState(120);
   const [isResting, setIsResting] = useState(false);
   const [completedVolume, setCompletedVolume] = useState(0);
   const [completedTotalSets, setCompletedTotalSets] = useState(0);
+  const [lastPerformance, setLastPerformance] = useState<{ weight: number; reps: number } | null>(null);
+  const [lastPerformanceLoading, setLastPerformanceLoading] = useState(false);
 
   const exercise = exercises[currentExerciseIndex];
   const totalSets = exercise?.sets ?? 0;
@@ -56,6 +60,9 @@ export default function WorkoutSessionScreen() {
         setIsResting(false);
         setCompletedVolume(0);
         setCompletedTotalSets(0);
+        setWeight(0);
+        setReps(8);
+        setLastPerformance(null);
 
         const data = await getWorkoutExercises(String(programId));
         if (cancelled) return;
@@ -82,11 +89,52 @@ export default function WorkoutSessionScreen() {
   }, [programId, user]);
 
   useEffect(() => {
+    if (!exercise || !user) return;
+
+    let cancelled = false;
+
+    async function loadLastPerformance() {
+      try {
+        setLastPerformanceLoading(true);
+        const performance = await getLastPerformance(user.id, exercise.exercise_id);
+
+        if (cancelled) return;
+
+        setLastPerformance(performance);
+
+        if (performance) {
+          setWeight(performance.weight);
+          setReps(Math.min(exercise.max_reps, Math.max(exercise.min_reps, performance.reps)));
+        } else {
+          setWeight(0);
+          setReps(Math.min(8, exercise.max_reps));
+        }
+      } catch (error) {
+        console.log("LAST PERFORMANCE ERROR =", error);
+        if (!cancelled) setLastPerformance(null);
+      } finally {
+        if (!cancelled) setLastPerformanceLoading(false);
+      }
+    }
+
+    loadLastPerformance();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [exercise?.exercise_id, user?.id]);
+
+  useEffect(() => {
+    if (!exercise) return;
+    setRestTime(exercise.rest_seconds || 120);
+  }, [exercise?.exercise_id]);
+
+  useEffect(() => {
     if (!isResting) return;
 
     if (restTime <= 0) {
       setIsResting(false);
-      setRestTime(120);
+      setRestTime(exercise?.rest_seconds || 120);
       return;
     }
 
@@ -95,7 +143,7 @@ export default function WorkoutSessionScreen() {
     }, 1000);
 
     return () => clearTimeout(timer);
-  }, [isResting, restTime]);
+  }, [isResting, restTime, exercise?.rest_seconds]);
 
   function formatTime(seconds: number) {
     const minutes = Math.floor(seconds / 60);
@@ -109,16 +157,15 @@ export default function WorkoutSessionScreen() {
   async function validateSet() {
     if (!exercise || !sessionId || saving) return;
 
+    if (weight <= 0 || reps <= 0) {
+      Alert.alert("Série incomplète", "Indique un poids et un nombre de répétitions valides.");
+      return;
+    }
+
     try {
       setSaving(true);
 
-      await saveWorkoutSet(
-        sessionId,
-        exercise.exercise_id,
-        currentSet,
-        weight,
-        reps
-      );
+      await saveWorkoutSet(sessionId, exercise.exercise_id, currentSet, weight, reps);
 
       const nextVolume = completedVolume + weight * reps;
       const nextTotalSets = completedTotalSets + 1;
@@ -128,7 +175,7 @@ export default function WorkoutSessionScreen() {
 
       if (currentSet < exercise.sets) {
         setCurrentSet((previous) => previous + 1);
-        setRestTime(30);
+        setRestTime(exercise.rest_seconds || 120);
         setIsResting(true);
         return;
       }
@@ -136,7 +183,7 @@ export default function WorkoutSessionScreen() {
       if (currentExerciseIndex < exercises.length - 1) {
         setCurrentExerciseIndex((previous) => previous + 1);
         setCurrentSet(1);
-        setRestTime(120);
+        setRestTime(exercise.rest_seconds || 120);
         setIsResting(true);
         return;
       }
@@ -145,12 +192,7 @@ export default function WorkoutSessionScreen() {
         ? Math.max(0, Math.floor((Date.now() - sessionStartedAt) / 1000))
         : 0;
 
-      await finishWorkoutSession(
-        sessionId,
-        duration,
-        nextVolume,
-        nextTotalSets
-      );
+      await finishWorkoutSession(sessionId, duration, nextVolume, nextTotalSets);
 
       setIsResting(false);
       Alert.alert("Bravo 🎉", "Séance terminée !");
@@ -177,36 +219,43 @@ export default function WorkoutSessionScreen() {
         subtitle={`Série ${currentSet} / ${totalSets}`}
       />
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.content}
-      >
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         {isResting && (
           <WorkoutRestCard
             time={formatTime(restTime)}
             onAdd15={() => setRestTime((time) => time + 15)}
-            onRemove15={() =>
-              setRestTime((time) => Math.max(0, time - 15))
-            }
+            onRemove15={() => setRestTime((time) => Math.max(0, time - 15))}
             onSkip={() => {
               setIsResting(false);
-              setRestTime(120);
+              setRestTime(exercise?.rest_seconds || 120);
             }}
           />
+        )}
+
+        <View style={styles.targetCard}>
+          <Text style={styles.targetTitle}>Objectif</Text>
+          <Text style={styles.targetValue}>
+            {exercise ? `${exercise.min_reps}–${exercise.max_reps} répétitions` : "—"}
+          </Text>
+          <Text style={styles.targetRest}>
+            Repos : {formatTime(exercise?.rest_seconds || 120)}
+          </Text>
+        </View>
+
+        {!lastPerformanceLoading && lastPerformance && (
+          <LastPerformance weight={lastPerformance.weight} reps={lastPerformance.reps} />
         )}
 
         <WorkoutWeightCard
           weight={weight}
           onIncrease={() => setWeight((value) => value + 2.5)}
-          onDecrease={() =>
-            setWeight((value) => Math.max(0, value - 2.5))
-          }
+          onDecrease={() => setWeight((value) => Math.max(0, value - 2.5))}
         />
 
         <WorkoutRepsCard
           reps={reps}
-          onIncrease={() => setReps((value) => value + 1)}
-          onDecrease={() => setReps((value) => Math.max(1, value - 1))}
+          onIncrease={() => setReps((value) => Math.min(exercise?.max_reps ?? value + 1, value + 1))}
+          onDecrease={() => setReps((value) => Math.max(exercise?.min_reps ?? 1, value - 1))}
         />
 
         <WorkoutProgressCard
@@ -244,5 +293,26 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 40,
     gap: 20,
+  },
+  targetCard: {
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: Colors.surface,
+  },
+  targetTitle: {
+    color: Colors.textSecondary,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  targetValue: {
+    color: Colors.text,
+    fontSize: 22,
+    fontWeight: "800",
+    marginTop: 6,
+  },
+  targetRest: {
+    color: Colors.textSecondary,
+    fontSize: 14,
+    marginTop: 6,
   },
 });
