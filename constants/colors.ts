@@ -1,21 +1,22 @@
 const Colors = {
-  background: "#08070B",
-  surface: "#121016",
-  surfaceLight: "#1E1826",
+  // Light mode — clean, premium white + violet
+  background: "#FFFFFF",
+  surface: "#FFFFFF",
+  surfaceLight: "#F7F5FF",
 
-  primary: "#8B5CF6",
-  primaryDark: "#7C3AED",
-  primaryLight: "#A78BFA",
+  primary: "#7C3AED",
+  primaryDark: "#6D28D9",
+  primaryLight: "#8B5CF6",
 
-  success: "#4ADE80",
-  warning: "#F59E0B",
-  danger: "#EF4444",
+  success: "#16A34A",
+  warning: "#D97706",
+  danger: "#DC2626",
 
-  text: "#FFFFFF",
-  textSecondary: "#C4C0CC",
-  textMuted: "#85808F",
+  text: "#17131F",
+  textSecondary: "#625A6B",
+  textMuted: "#8E8798",
 
-  border: "#30283A",
+  border: "#E7E1F0",
 };
 
 export default Colors;
