@@ -1,7 +1,9 @@
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as Notifications from "expo-notifications";
+import { useCallback, useState } from "react";
 
+import ProgressPlusLaunch from "@/components/ui/ProgressPlusLaunch";
 import { AuthProvider } from "@/contexts/AuthContext";
 
 Notifications.setNotificationHandler({
@@ -14,6 +16,9 @@ Notifications.setNotificationHandler({
 });
 
 export default function RootLayout() {
+  const [showLaunch, setShowLaunch] = useState(true);
+  const finishLaunch = useCallback(() => setShowLaunch(false), []);
+
   return (
     <AuthProvider>
       <StatusBar style="light" />
@@ -27,6 +32,8 @@ export default function RootLayout() {
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(app)" />
       </Stack>
+
+      {showLaunch && <ProgressPlusLaunch onFinished={finishLaunch} />}
     </AuthProvider>
   );
 }
