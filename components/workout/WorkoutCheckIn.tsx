@@ -17,50 +17,50 @@ type Props = {
   onContinue?: (values: CheckinValues) => void;
 };
 
-const options = [
-  { value: 1, label: "Très bas" },
-  { value: 2, label: "Bas" },
-  { value: 3, label: "Moyen" },
-  { value: 4, label: "Bon" },
-  { value: 5, label: "Excellent" },
-] as const;
+const options = [1, 2, 3, 4, 5] as const;
+
+type ScorePickerProps = {
+  title: string;
+  value: 1 | 2 | 3 | 4 | 5;
+  onChange: (value: 1 | 2 | 3 | 4 | 5) => void;
+  labels?: readonly [string, string, string, string, string];
+};
 
 function ScorePicker({
   title,
-  hint,
   value,
   onChange,
-}: {
-  title: string;
-  hint?: string;
-  value: number;
-  onChange: (value: 1 | 2 | 3 | 4 | 5) => void;
-}) {
+  labels = ["Très bas", "Bas", "Moyen", "Bon", "Excellent"],
+}: ScorePickerProps) {
   return (
     <View style={styles.question}>
-      <View style={styles.questionHeader}>
-        <Text style={styles.questionTitle}>{title}</Text>
-        {hint ? <Text style={styles.hint}>{hint}</Text> : null}
-      </View>
+      <Text style={styles.questionTitle}>{title}</Text>
+
       <View style={styles.options}>
         {options.map((option) => (
           <Pressable
-            key={option.value}
-            onPress={() => onChange(option.value)}
-            style={[styles.option, value === option.value && styles.optionActive]}
+            key={option}
+            onPress={() => onChange(option)}
+            style={[styles.option, value === option && styles.optionActive]}
           >
             <Text
               style={[
                 styles.optionNumber,
-                value === option.value && styles.optionNumberActive,
+                value === option && styles.optionNumberActive,
               ]}
             >
-              {option.value}
+              {option}
             </Text>
           </Pressable>
         ))}
       </View>
-      <Text style={styles.selectedLabel}>{options[value - 1].label}</Text>
+
+      <View style={styles.scaleLabels}>
+        <Text style={styles.scaleLabel}>{labels[0]}</Text>
+        <Text style={styles.scaleLabel}>{labels[4]}</Text>
+      </View>
+
+      <Text style={styles.selectedLabel}>{labels[value - 1]}</Text>
     </View>
   );
 }
@@ -76,10 +76,11 @@ export default function WorkoutCheckIn({ onComplete, onContinue }: Props) {
 
   const readyLabel = useMemo(() => {
     const score = Math.round(
-      (values.sleep + values.energy + values.mood + (6 - values.fatigue) + (6 - values.pain)) / 5
+      (values.sleep + values.energy + values.mood + values.fatigue + values.pain) / 5
     );
-    if (score >= 4 && values.pain <= 2) return "Tu sembles prêt à pousser 🟢";
-    if (score <= 2 || values.pain >= 4) return "On va adapter la séance 🟠";
+
+    if (score >= 4 && values.pain >= 4) return "Tu sembles prêt à pousser 🟢";
+    if (score <= 2 || values.pain <= 2) return "On va adapter la séance 🟠";
     return "Séance normale 🟡";
   }, [values]);
 
@@ -113,13 +114,13 @@ export default function WorkoutCheckIn({ onComplete, onContinue }: Props) {
       />
       <ScorePicker
         title="💪 Fatigue musculaire"
-        hint="5 = très fatigué"
+        labels={["Très fatigué", "Fatigué", "Moyen", "Peu fatigué", "Pas fatigué"]}
         value={values.fatigue}
         onChange={(value) => setValues((v) => ({ ...v, fatigue: value }))}
       />
       <ScorePicker
         title="🩹 Douleur / gêne"
-        hint="5 = forte"
+        labels={["Très forte", "Forte", "Moyenne", "Faible", "Aucune"]}
         value={values.pain}
         onChange={(value) => setValues((v) => ({ ...v, pain: value }))}
       />
@@ -165,19 +166,10 @@ const styles = StyleSheet.create({
   question: {
     gap: 8,
   },
-  questionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "baseline",
-  },
   questionTitle: {
     color: Colors.text,
     fontSize: 15,
     fontWeight: "800",
-  },
-  hint: {
-    color: Colors.textMuted,
-    fontSize: 11,
   },
   options: {
     flexDirection: "row",
@@ -204,6 +196,14 @@ const styles = StyleSheet.create({
   },
   optionNumberActive: {
     color: "#061008",
+  },
+  scaleLabels: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  scaleLabel: {
+    color: Colors.textMuted,
+    fontSize: 11,
   },
   selectedLabel: {
     color: Colors.textMuted,
