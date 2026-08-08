@@ -1,3 +1,4 @@
+import { router } from "expo-router";
 import { Calendar, Dumbbell, Flame, Trophy } from "lucide-react-native";
 import { StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -11,6 +12,11 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.container}>
       <Text style={styles.greeting}>Bonjour Andy 👋</Text>
       <Text style={styles.subtitle}>Prêt pour battre ton prochain record ?</Text>
+
+      <Button
+        title="BIBLIOTHÈQUE MUSCULAIRE"
+        onPress={() => router.push("/(app)/muscle-library")}
+      />
 
       <Card>
         <View style={styles.row}>
