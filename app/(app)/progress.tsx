@@ -110,9 +110,7 @@ export default function Progress() {
         data={history}
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={refresh} />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} />}
         contentContainerStyle={styles.content}
         ListHeaderComponent={
           <View>
@@ -122,20 +120,26 @@ export default function Progress() {
             </Text>
 
             <View style={styles.statsRow}>
-              <Card style={styles.statCard}>
-                <Text style={styles.statValue}>{stats.sessions}</Text>
-                <Text style={styles.statLabel}>Séances</Text>
-              </Card>
+              <View style={styles.statWrapper}>
+                <Card>
+                  <Text style={styles.statValue}>{stats.sessions}</Text>
+                  <Text style={styles.statLabel}>Séances</Text>
+                </Card>
+              </View>
 
-              <Card style={styles.statCard}>
-                <Text style={styles.statValue}>{formatVolume(stats.volume)}</Text>
-                <Text style={styles.statLabel}>Volume</Text>
-              </Card>
+              <View style={styles.statWrapper}>
+                <Card>
+                  <Text style={styles.statValue}>{formatVolume(stats.volume)}</Text>
+                  <Text style={styles.statLabel}>Volume</Text>
+                </Card>
+              </View>
 
-              <Card style={styles.statCard}>
-                <Text style={styles.statValue}>{stats.sets}</Text>
-                <Text style={styles.statLabel}>Séries</Text>
-              </Card>
+              <View style={styles.statWrapper}>
+                <Card>
+                  <Text style={styles.statValue}>{stats.sets}</Text>
+                  <Text style={styles.statLabel}>Séries</Text>
+                </Card>
+              </View>
             </View>
 
             <Text style={styles.sectionTitle}>Historique</Text>
@@ -166,12 +170,8 @@ export default function Progress() {
             </View>
 
             <View style={styles.sessionStats}>
-              <Text style={styles.sessionStat}>
-                {formatVolume(item.total_volume)}
-              </Text>
-              <Text style={styles.sessionStat}>
-                {item.total_sets ?? 0} séries
-              </Text>
+              <Text style={styles.sessionStat}>{formatVolume(item.total_volume)}</Text>
+              <Text style={styles.sessionStat}>{item.total_sets ?? 0} séries</Text>
             </View>
           </Card>
         )}
@@ -215,9 +215,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 10,
   },
-  statCard: {
+  statWrapper: {
     flex: 1,
-    padding: 14,
   },
   statValue: {
     color: Colors.text,
