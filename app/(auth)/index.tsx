@@ -1,10 +1,6 @@
 import { router } from "expo-router";
-import {
-  Dumbbell,
-  LogIn,
-  UserPlus,
-} from "lucide-react-native";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { LogIn, UserPlus } from "lucide-react-native";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
 import Colors from "@/constants/colors";
 
@@ -12,13 +8,11 @@ export default function WelcomeScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.logoContainer}>
-        <View style={styles.logoCircle}>
-          <Dumbbell
-            size={44}
-            color={Colors.primary}
-            strokeWidth={2.5}
-          />
-        </View>
+        <Image
+          source={require("@/assets/images/icon.png")}
+          style={styles.logo}
+          resizeMode="contain"
+        />
 
         <Text style={styles.title}>Progress+</Text>
         <Text style={styles.subtitle}>Every rep counts.</Text>
@@ -65,16 +59,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
 
-  logoCircle: {
-    width: 112,
-    height: 112,
-    borderRadius: 56,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: Colors.surfaceLight,
-    borderWidth: 1.5,
-    borderColor: "#E4D9FF",
-    marginBottom: 28,
+  logo: {
+    width: 150,
+    height: 150,
+    marginBottom: 24,
   },
 
   title: {
