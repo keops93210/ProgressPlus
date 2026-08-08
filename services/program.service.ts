@@ -22,7 +22,28 @@ export async function getPrograms(userId: string) {
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
   if (error) throw error;
-  return data;
+
+  const programs = data ?? [];
+  if (programs.length === 0) return [];
+
+  const programIds = programs.map((program) => program.id);
+  const { data: communityPrograms, error: communityError } = await supabase
+    .from("community_programs")
+    .select("source_program_id, is_published")
+    .in("source_program_id", programIds);
+  if (communityError) throw communityError;
+
+  const publicationByProgram = new Map(
+    (communityPrograms ?? []).map((communityProgram) => [
+      communityProgram.source_program_id,
+      communityProgram.is_published === true,
+    ]),
+  );
+
+  return programs.map((program) => ({
+    ...program,
+    is_published: publicationByProgram.get(program.id) ?? false,
+  }));
 }
 
 export async function getProgram(id: string) {
