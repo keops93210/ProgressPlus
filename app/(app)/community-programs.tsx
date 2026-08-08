@@ -17,16 +17,22 @@ import {
   CommunityProgram,
   CommunitySort,
   downloadCommunityProgram,
-  getCommunityPrograms,
   toggleCommunityFavorite,
 } from "@/services/community-program.service";
 
 const filters: { key: CommunitySort; label: string }[] = [
-  { key: "weekly", label: "🔥 Top de la semaine" },
-  { key: "rating", label: "⭐ Mieux notés" },
-  { key: "downloads", label: "📥 Plus téléchargés" },
-  { key: "new", label: "🆕 Nouveaux" },
+  { key: "weekly", label: "Top de la semaine" },
+  { key: "rating", label: "Mieux notés" },
+  { key: "downloads", label: "Plus téléchargés" },
+  { key: "new", label: "Nouveautés" },
 ];
+
+const sortDescriptions: Record<CommunitySort, string> = {
+  weekly: "Les programmes qui progressent le plus cette semaine.",
+  rating: "Les programmes les mieux évalués par la communauté.",
+  downloads: "Les programmes les plus ajoutés par les utilisateurs.",
+  new: "Les derniers programmes publiés dans la communauté.",
+};
 
 export default function CommunityPrograms() {
   const [sort, setSort] = useState<CommunitySort>("weekly");
@@ -90,8 +96,8 @@ export default function CommunityPrograms() {
             <ChevronLeft size={27} color={Colors.text} strokeWidth={2.5} />
           </Pressable>
           <View style={styles.headerCopy}>
-            <Text style={styles.title}>Programmes</Text>
-            <Text style={styles.subtitle}>Découvre les programmes de la communauté</Text>
+            <Text style={styles.title}>Communauté</Text>
+            <Text style={styles.subtitle}>Des programmes créés et partagés par les utilisateurs.</Text>
           </View>
         </View>
 
@@ -102,7 +108,7 @@ export default function CommunityPrograms() {
               <Pressable
                 key={filter.key}
                 onPress={() => setSort(filter.key)}
-                style={[styles.filter, active && styles.filterActive]}
+                style={({ pressed }) => [styles.filter, active && styles.filterActive, pressed && styles.pressed]}
               >
                 <Text style={[styles.filterText, active && styles.filterTextActive]}>
                   {filter.label}
@@ -112,11 +118,16 @@ export default function CommunityPrograms() {
           })}
         </ScrollView>
 
+        <View style={styles.sectionIntro}>
+          <Text style={styles.sectionTitle}>{filters.find((item) => item.key === sort)?.label}</Text>
+          <Text style={styles.sectionDescription}>{sortDescriptions[sort]}</Text>
+        </View>
+
         <View style={styles.freeBanner}>
-          <TrendingUp size={20} color={Colors.primary} />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.freeTitle}>100 % gratuit</Text>
-            <Text style={styles.freeText}>Les programmes partagés par la communauté sont accessibles à tous.</Text>
+          <TrendingUp size={19} color={Colors.primary} />
+          <View style={styles.freeCopy}>
+            <Text style={styles.freeTitle}>Toujours gratuit</Text>
+            <Text style={styles.freeText}>Les programmes partagés dans la communauté sont accessibles à tous.</Text>
           </View>
         </View>
 
@@ -125,18 +136,30 @@ export default function CommunityPrograms() {
         ) : programs.length === 0 ? (
           <View style={styles.empty}>
             <Text style={styles.emptyTitle}>La communauté démarre ici</Text>
-            <Text style={styles.emptyText}>Publie un programme pour devenir l'un des premiers créateurs Progress+.</Text>
+            <Text style={styles.emptyText}>
+              Publie un programme pour devenir l'un des premiers créateurs Progress+.
+            </Text>
           </View>
         ) : (
           programs.map((program, index) => (
             <View key={program.id} style={styles.card}>
-              <View style={styles.rankBadge}>
-                <Text style={styles.rankText}>{index + 1}</Text>
+              <View style={[styles.rankBadge, index === 0 && styles.rankBadgeFeatured]}>
+                <Text style={[styles.rankText, index === 0 && styles.rankTextFeatured]}>{index + 1}</Text>
               </View>
 
               <View style={styles.cardBody}>
-                <Text style={styles.programName}>{program.name}</Text>
-                <Text style={styles.creator}>par {program.creator_name}</Text>
+                <View style={styles.titleRow}>
+                  <View style={styles.titleCopy}>
+                    <Text style={styles.programName}>{program.name}</Text>
+                    <Text style={styles.creator}>par {program.creator_name}</Text>
+                  </View>
+                  {index === 0 && sort === "weekly" ? (
+                    <View style={styles.featuredBadge}>
+                      <Text style={styles.featuredText}>À la une</Text>
+                    </View>
+                  ) : null}
+                </View>
+
                 <Text style={styles.description} numberOfLines={2}>
                   {program.description || "Programme d'entraînement Progress+."}
                 </Text>
@@ -147,6 +170,9 @@ export default function CommunityPrograms() {
                     <Text style={styles.metaText}>
                       {program.rating_average ? program.rating_average.toFixed(1) : "Nouveau"}
                     </Text>
+                    {program.ratings_count > 0 ? (
+                      <Text style={styles.metaCount}>({program.ratings_count})</Text>
+                    ) : null}
                   </View>
                   <View style={styles.metaItem}>
                     <Download size={15} color={Colors.textSecondary} />
@@ -170,7 +196,11 @@ export default function CommunityPrograms() {
                       </>
                     )}
                   </Pressable>
-                  <Pressable onPress={() => handleFavorite(program)} style={styles.favoriteButton}>
+                  <Pressable
+                    onPress={() => handleFavorite(program)}
+                    hitSlop={6}
+                    style={({ pressed }) => [styles.favoriteButton, pressed && styles.pressed]}
+                  >
                     <Heart size={19} color={Colors.primary} />
                   </Pressable>
                 </View>
@@ -190,25 +220,36 @@ const styles = StyleSheet.create({
   back: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", backgroundColor: Colors.surfaceLight },
   headerCopy: { flex: 1, marginLeft: 10 },
   title: { color: Colors.text, fontSize: 30, fontWeight: "900" },
-  subtitle: { color: Colors.textSecondary, marginTop: 3, fontSize: 14 },
-  filters: { gap: 9, paddingBottom: 14 },
+  subtitle: { color: Colors.textSecondary, marginTop: 3, fontSize: 14, lineHeight: 19 },
+  filters: { gap: 9, paddingBottom: 12 },
   filter: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 14, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.surface },
   filterActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   filterText: { color: Colors.textSecondary, fontSize: 13, fontWeight: "700" },
   filterTextActive: { color: "#FFFFFF" },
-  freeBanner: { flexDirection: "row", gap: 12, padding: 15, borderRadius: 18, backgroundColor: Colors.surfaceLight, marginBottom: 16 },
-  freeTitle: { color: Colors.primary, fontWeight: "900", fontSize: 15 },
+  sectionIntro: { marginTop: 2, marginBottom: 14 },
+  sectionTitle: { color: Colors.text, fontSize: 21, fontWeight: "900" },
+  sectionDescription: { color: Colors.textSecondary, fontSize: 12, lineHeight: 17, marginTop: 4 },
+  freeBanner: { flexDirection: "row", alignItems: "center", gap: 12, padding: 15, borderRadius: 18, backgroundColor: Colors.surfaceLight, marginBottom: 16 },
+  freeCopy: { flex: 1 },
+  freeTitle: { color: Colors.primary, fontWeight: "900", fontSize: 14 },
   freeText: { color: Colors.textSecondary, fontSize: 12, lineHeight: 17, marginTop: 2 },
   card: { flexDirection: "row", backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, borderRadius: 20, padding: 15, marginBottom: 12 },
   rankBadge: { width: 34, height: 34, borderRadius: 17, backgroundColor: Colors.surfaceLight, alignItems: "center", justifyContent: "center", marginRight: 12 },
+  rankBadgeFeatured: { backgroundColor: Colors.primary },
   rankText: { color: Colors.primary, fontWeight: "900" },
+  rankTextFeatured: { color: "#FFFFFF" },
   cardBody: { flex: 1 },
+  titleRow: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
+  titleCopy: { flex: 1 },
   programName: { color: Colors.text, fontSize: 18, fontWeight: "900" },
   creator: { color: Colors.textMuted, fontSize: 12, marginTop: 2 },
+  featuredBadge: { paddingHorizontal: 8, paddingVertical: 5, borderRadius: 9, backgroundColor: Colors.surfaceLight },
+  featuredText: { color: Colors.primary, fontSize: 10, fontWeight: "900" },
   description: { color: Colors.textSecondary, fontSize: 13, lineHeight: 18, marginTop: 8 },
-  metaRow: { flexDirection: "row", alignItems: "center", gap: 14, marginTop: 10 },
+  metaRow: { flexDirection: "row", alignItems: "center", gap: 13, marginTop: 10 },
   metaItem: { flexDirection: "row", alignItems: "center", gap: 4 },
   metaText: { color: Colors.textSecondary, fontSize: 12, fontWeight: "700" },
+  metaCount: { color: Colors.textMuted, fontSize: 11 },
   category: { color: Colors.primary, fontSize: 11, fontWeight: "800", marginLeft: "auto" },
   actions: { flexDirection: "row", gap: 8, marginTop: 13 },
   downloadButton: { flex: 1, minHeight: 44, borderRadius: 13, backgroundColor: Colors.primary, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, paddingHorizontal: 10 },
