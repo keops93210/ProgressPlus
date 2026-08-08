@@ -103,7 +103,7 @@ export async function calculateStreak(userId: string) {
   return { current, best };
 }
 
-export async function awardWorkoutPoints(userId: string, input: { volume: number; totalSets: number; personalRecords?: number; }) {
+export async function awardWorkoutPoints(userId: string, input: { volume: number; totalSets: number; personalRecords?: number; sessionId?: string; }) {
   const profile = await getRankingProfile(userId);
   const streak = await calculateStreak(userId);
   const points = calculateWorkoutPoints({ ...input, consistencyBonus: Math.min(25, Math.max(0, streak.current * 5)) });
@@ -112,6 +112,21 @@ export async function awardWorkoutPoints(userId: string, input: { volume: number
 
   const { data, error } = await supabase.from("progress_profiles").update({ score: nextScore, rank: nextRank.name, season_points: profile.season_points + points, streak_days: streak.current, updated_at: new Date().toISOString() }).eq("user_id", userId).select().single();
   if (error) throw error;
+
+  const { error: eventError } = await supabase.from("progress_score_events").insert({
+    user_id: userId,
+    event_type: "workout_completed",
+    points,
+    metadata: {
+      session_id: input.sessionId ?? null,
+      volume: input.volume,
+      total_sets: input.totalSets,
+      personal_records: input.personalRecords ?? 0,
+      streak_days: streak.current,
+    },
+  });
+  if (eventError) throw eventError;
+
   return { profile: data as RankingProfile, pointsEarned: points, streak };
 }
 
