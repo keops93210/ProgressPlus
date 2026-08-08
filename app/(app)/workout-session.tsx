@@ -33,6 +33,7 @@ export default function WorkoutSessionScreen() {
   const [isResting, setIsResting] = useState(false);
   const [completedVolume, setCompletedVolume] = useState(0);
   const [completedTotalSets, setCompletedTotalSets] = useState(0);
+  const [personalRecordsThisSession, setPersonalRecordsThisSession] = useState(0);
   const [lastPerformance, setLastPerformance] = useState<{ weight: number; reps: number } | null>(null);
   const [lastPerformanceLoading, setLastPerformanceLoading] = useState(false);
   const [recommendation, setRecommendation] = useState<ProgressionRecommendation | null>(null);
@@ -173,11 +174,15 @@ export default function WorkoutSessionScreen() {
     }
     try {
       setSaving(true);
-      await saveWorkoutSet(sessionId, exercise.exercise_id, currentSet, weight, reps);
-      const nextVolume = completedVolume + weight * reps;
-      const nextTotalSets = completedTotalSets + 1;
+      const savedSet = await saveWorkoutSet(sessionId, exercise.exercise_id, currentSet, weight, reps);
+      const volumeDelta = weight * reps - savedSet.previousWeight * savedSet.previousReps;
+      const nextVolume = Math.max(0, completedVolume + volumeDelta);
+      const nextTotalSets = completedTotalSets + (savedSet.isNew ? 1 : 0);
+      const nextPersonalRecords = personalRecordsThisSession + (savedSet.isPersonalRecord ? 1 : 0);
       setCompletedVolume(nextVolume);
       setCompletedTotalSets(nextTotalSets);
+      setPersonalRecordsThisSession(nextPersonalRecords);
+
       if (currentSet < exercise.sets) {
         setCurrentSet((previous) => previous + 1);
         setRestTime(exercise.rest_seconds || 120);
@@ -197,11 +202,7 @@ export default function WorkoutSessionScreen() {
 
       if (user) {
         try {
-          const result = await awardWorkoutPoints(user.id, {
-            volume: nextVolume,
-            totalSets: nextTotalSets,
-            personalRecords: 0,
-          });
+          const result = await awardWorkoutPoints(user.id, { volume: nextVolume, totalSets: nextTotalSets, personalRecords: nextPersonalRecords });
           setEarnedPoints(result.pointsEarned);
         } catch (rankingError) {
           console.log("RANKING AWARD ERROR =", rankingError);
@@ -224,9 +225,7 @@ export default function WorkoutSessionScreen() {
     setReps(Math.min(exercise?.max_reps ?? recommendation.recommendedReps, Math.max(exercise?.min_reps ?? recommendation.recommendedReps, recommendation.recommendedReps)));
   }
 
-  if (loading) {
-    return <SafeAreaView style={styles.container}><Header title="Chargement..." /></SafeAreaView>;
-  }
+  if (loading) return <SafeAreaView style={styles.container}><Header title="Chargement..." /></SafeAreaView>;
 
   if (completed) {
     return (
