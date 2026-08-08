@@ -12,6 +12,7 @@ import {
   getLastPerformance,
   getProgressionRecommendation,
   getWorkoutExercises,
+  getWorkoutSession,
   saveWorkoutSet,
   startWorkoutSession,
   ProgressionRecommendation,
@@ -71,13 +72,52 @@ export default function WorkoutSessionScreen() {
 
         const data = await getWorkoutExercises(String(programId));
         if (cancelled) return;
-        setExercises(data ?? []);
+        const loadedExercises = data ?? [];
+        setExercises(loadedExercises);
 
         const session = await startWorkoutSession(user.id, String(programId));
         if (cancelled) return;
 
         setSessionId(session.id);
-        setSessionStartedAt(Date.now());
+        setSessionStartedAt(new Date(session.started_at).getTime());
+
+        const sessionWithSets = await getWorkoutSession(session.id);
+        if (cancelled) return;
+
+        const savedSets = (sessionWithSets?.workout_sets ?? []).filter(
+          (set: any) => set.completed !== false
+        );
+
+        const savedVolume = savedSets.reduce(
+          (sum: number, set: any) =>
+            sum + Number(set.weight || 0) * Number(set.reps || 0),
+          0
+        );
+        setCompletedVolume(savedVolume);
+        setCompletedTotalSets(savedSets.length);
+
+        let resumeExerciseIndex = 0;
+        let resumeSet = 1;
+
+        for (let index = 0; index < loadedExercises.length; index += 1) {
+          const exerciseSets = savedSets.filter(
+            (set: any) => set.exercise_id === loadedExercises[index].exercise_id
+          );
+
+          if (exerciseSets.length < loadedExercises[index].sets) {
+            resumeExerciseIndex = index;
+            resumeSet = exerciseSets.length + 1;
+            break;
+          }
+
+          if (index === loadedExercises.length - 1) {
+            resumeExerciseIndex = index;
+            resumeSet = loadedExercises[index].sets;
+          }
+        }
+
+        setCurrentExerciseIndex(resumeExerciseIndex);
+        setCurrentSet(resumeSet);
       } catch (error) {
         console.log("LOAD WORKOUT ERROR =", error);
         Alert.alert("Erreur", "Impossible de charger la séance.");
@@ -179,7 +219,6 @@ export default function WorkoutSessionScreen() {
     const remainingSeconds = seconds % 60;
 
     if (minutes === 0) return `${remainingSeconds}s`;
-
     return `${minutes}m${remainingSeconds.toString().padStart(2, "0")}`;
   }
 
