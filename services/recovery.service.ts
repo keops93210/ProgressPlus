@@ -19,8 +19,9 @@ export interface RecoveryCheckin extends RecoveryCheckinInput {
 }
 
 export function calculateRecoveryScore(input: RecoveryCheckinInput) {
+  // Every selector is already oriented so that 5 = best condition.
   return Number(
-    ((input.sleep + input.energy + input.mood + (6 - input.fatigue) + (6 - input.pain)) / 5).toFixed(2)
+    ((input.sleep + input.energy + input.mood + input.fatigue + input.pain) / 5).toFixed(2)
   );
 }
 
@@ -61,6 +62,8 @@ export async function saveRecoveryCheckin(
   sessionId: string,
   input: RecoveryCheckinInput
 ) {
+  const recoveryScore = calculateRecoveryScore(input);
+
   const { data, error } = await supabase
     .from("workout_checkins")
     .insert({
@@ -71,16 +74,26 @@ export async function saveRecoveryCheckin(
       mood_score: input.mood,
       fatigue_score: input.fatigue,
       pain_score: input.pain,
+      recovery_score: recoveryScore,
     })
     .select()
     .single();
 
   if (error) throw error;
 
-  await supabase
+  const { error: sessionError } = await supabase
     .from("workout_sessions")
-    .update({ recovery_score: data.recovery_score })
+    .update({
+      recovery_score: recoveryScore,
+      sleep_score: input.sleep,
+      energy_score: input.energy,
+      mood_score: input.mood,
+      fatigue_score: input.fatigue,
+      pain_score: input.pain,
+    })
     .eq("id", sessionId);
+
+  if (sessionError) throw sessionError;
 
   return data as RecoveryCheckin;
 }
