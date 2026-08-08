@@ -287,6 +287,39 @@ export async function getProgressionRecommendation(
   };
 }
 
+export interface PersonalRecordItem {
+  id: string;
+  exercise_id: string;
+  weight: number;
+  reps: number;
+  estimated_1rm: number | null;
+  created_at: string | null;
+  exercises: { name: string } | null;
+}
+
+export async function getPersonalRecords(
+  userId: string,
+  limit = 10
+): Promise<PersonalRecordItem[]> {
+  const { data, error } = await supabase
+    .from("personal_records")
+    .select(`
+      id,
+      exercise_id,
+      weight,
+      reps,
+      estimated_1rm,
+      created_at,
+      exercises (name)
+    `)
+    .eq("user_id", userId)
+    .order("estimated_1rm", { ascending: false })
+    .limit(limit);
+
+  if (error) throw error;
+  return (data ?? []) as unknown as PersonalRecordItem[];
+}
+
 export interface WorkoutHistoryItem {
   id: string;
   program_id: string;
