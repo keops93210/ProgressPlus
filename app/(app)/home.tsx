@@ -39,7 +39,7 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.levelCard}>
+        <TouchableOpacity style={styles.levelCard} activeOpacity={0.9} onPress={() => router.push("/(app)/ranking")}>
           <View style={styles.levelTop}>
             <View>
               <Text style={styles.levelLabel}>NIVEAU 12</Text>
@@ -49,7 +49,7 @@ export default function HomeScreen() {
           </View>
           <View style={styles.progressTrack}><View style={styles.progressFill} /></View>
           <View style={styles.levelBottom}><Text style={styles.levelSmall}>760 XP avant le niveau 13</Text><Text style={styles.levelSmall}>62%</Text></View>
-        </View>
+        </TouchableOpacity>
 
         <SectionHeader title="Ta séance aujourd'hui" />
         <TouchableOpacity style={styles.workoutCard} activeOpacity={0.9} onPress={() => router.push("/(app)/workout")}>
@@ -70,7 +70,7 @@ export default function HomeScreen() {
           <View style={styles.divider} />
           <Metric icon={Smile} label="Humeur" value="8/10" />
         </View>
-        <TouchableOpacity style={styles.checkinButton} onPress={() => router.push("/(app)/workout")}> 
+        <TouchableOpacity style={styles.checkinButton} onPress={() => router.push("/(app)/workout")}>
           <Text style={styles.checkinText}>Modifier mon état</Text>
           <ChevronRight color={Colors.primary} size={18} />
         </TouchableOpacity>
