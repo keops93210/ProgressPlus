@@ -50,8 +50,8 @@ export default function WorkoutCheckIn({ onComplete, onContinue }: Props) {
   const [values, setValues] = useState<CheckinValues>({ sleep: 3, energy: 3, mood: 3, fatigue: 3, pain: 1 });
 
   const readiness = useMemo(() => {
-    // Fatigue and pain are inverted: 5 means little/no fatigue and no pain.
-    const score = (values.sleep + values.energy + values.mood + (6 - values.fatigue) + (6 - values.pain)) / 5;
+    // Toutes les échelles sont orientées dans le même sens : 5 = meilleur état.
+    const score = (values.sleep + values.energy + values.mood + values.fatigue + values.pain) / 5;
     if (values.pain <= 2 || values.fatigue <= 2 || score <= 2.4) {
       return { label: "On va adapter la séance 🟠", score };
     }
