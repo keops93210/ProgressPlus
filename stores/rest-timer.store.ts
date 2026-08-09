@@ -3,6 +3,8 @@ import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 import { create } from "zustand";
 
+import { getRestFeedbackSettings } from "@/services/rest-feedback.service";
+
 const STORAGE_KEY = "progressplus.rest.timer";
 const NOTIFICATION_KEY = "progressplus.rest.timer.notification";
 const CHANNEL_ID = "progressplus-rest";
@@ -49,11 +51,12 @@ async function scheduleNotification(seconds: number) {
       const requested = await Notifications.requestPermissionsAsync();
       if (!requested.granted) return null;
     }
+    const settings = await getRestFeedbackSettings();
     return await Notifications.scheduleNotificationAsync({
       content: {
         title: "Repos terminé 💪",
         body: "C'est reparti. Ta prochaine série t'attend.",
-        sound: "default",
+        sound: settings.soundEnabled ? "default" : false,
         data: { type: "rest-timer" },
       },
       trigger: {
