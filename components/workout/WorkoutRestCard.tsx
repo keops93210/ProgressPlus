@@ -1,10 +1,8 @@
-import { useEffect, useRef } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Check, Minus, Plus, Timer, X } from "lucide-react-native";
 
 import Card from "@/components/ui/Card";
 import Colors from "@/constants/colors";
-import { useRestTimerStore } from "@/stores/rest-timer.store";
 
 interface WorkoutRestCardProps {
   time: string;
@@ -14,45 +12,22 @@ interface WorkoutRestCardProps {
 }
 
 function parseTime(value: string) {
-  const minuteMatch = value.match(/(\d+)m(\d+)$/);
+  const minuteMatch = value.match(/^(\d+)m(\d+)$/);
   if (minuteMatch) return Number(minuteMatch[1]) * 60 + Number(minuteMatch[2]);
-  const secondMatch = value.match(/(\d+)s$/);
-  return secondMatch ? Number(secondMatch[1]) : 120;
+  const secondMatch = value.match(/^(\d+)s$/);
+  return secondMatch ? Number(secondMatch[1]) : 0;
 }
 
-function formatTime(seconds: number) {
-  const safe = Math.max(0, Math.round(seconds));
+function formatTime(value: string) {
+  const safe = Math.max(0, parseTime(value));
   const minutes = Math.floor(safe / 60);
-  const remaining = safe % 60;
-  return `${minutes}:${remaining.toString().padStart(2, "0")}`;
+  const seconds = safe % 60;
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
 
 export default function WorkoutRestCard({ time, onAdd15, onRemove15, onSkip }: WorkoutRestCardProps) {
-  const startedRef = useRef(false);
-  const { active, remaining, duration, hydrated, start, add, remove, skip, sync } = useRestTimerStore();
-
-  // Keep the displayed countdown locked to the real end timestamp.
-  useEffect(() => {
-    if (!hydrated || !active) return;
-    sync();
-    const interval = setInterval(sync, 500);
-    return () => clearInterval(interval);
-  }, [hydrated, active, sync]);
-
-  useEffect(() => {
-    if (!hydrated) return;
-    if (!active) startedRef.current = false;
-  }, [hydrated, active]);
-
-  useEffect(() => {
-    if (!hydrated || active || startedRef.current) return;
-    startedRef.current = true;
-    void start(parseTime(time));
-  }, [hydrated, active, start, time]);
-
-  if (!hydrated || !active) return null;
-
-  const progress = duration > 0 ? Math.max(0, Math.min(1, remaining / duration)) : 0;
+  const seconds = parseTime(time);
+  const progress = Math.max(0, Math.min(1, seconds / 180));
 
   return (
     <Card>
@@ -63,7 +38,7 @@ export default function WorkoutRestCard({ time, onAdd15, onRemove15, onSkip }: W
           </View>
           <Text style={styles.title}>Repos</Text>
         </View>
-        <Text style={styles.timer}>{formatTime(remaining)}</Text>
+        <Text style={styles.timer}>{formatTime(time)}</Text>
       </View>
 
       <View style={styles.progressTrack}>
@@ -74,7 +49,7 @@ export default function WorkoutRestCard({ time, onAdd15, onRemove15, onSkip }: W
         <TouchableOpacity
           accessibilityLabel="Retirer 15 secondes"
           style={styles.adjustButton}
-          onPress={() => { onRemove15(); void remove(15); }}
+          onPress={onRemove15}
         >
           <Minus size={17} color={Colors.text} />
           <Text style={styles.adjustText}>15 s</Text>
@@ -83,7 +58,7 @@ export default function WorkoutRestCard({ time, onAdd15, onRemove15, onSkip }: W
         <TouchableOpacity
           accessibilityLabel="Ajouter 15 secondes"
           style={styles.adjustButton}
-          onPress={() => { onAdd15(); void add(15); }}
+          onPress={onAdd15}
         >
           <Plus size={17} color={Colors.text} />
           <Text style={styles.adjustText}>15 s</Text>
@@ -92,7 +67,7 @@ export default function WorkoutRestCard({ time, onAdd15, onRemove15, onSkip }: W
         <TouchableOpacity
           accessibilityLabel="Passer le repos"
           style={styles.skipButton}
-          onPress={() => { onSkip(); void skip(); }}
+          onPress={onSkip}
         >
           <Check size={17} color="#FFFFFF" />
           <Text style={styles.skipText}>Prêt</Text>
@@ -101,11 +76,7 @@ export default function WorkoutRestCard({ time, onAdd15, onRemove15, onSkip }: W
 
       <View style={styles.hintRow}>
         <Text style={styles.hint}>Le repos démarre automatiquement après chaque série</Text>
-        <TouchableOpacity
-          accessibilityLabel="Fermer le minuteur"
-          hitSlop={8}
-          onPress={() => { onSkip(); void skip(); }}
-        >
+        <TouchableOpacity accessibilityLabel="Fermer le minuteur" hitSlop={8} onPress={onSkip}>
           <X size={15} color={Colors.textMuted} />
         </TouchableOpacity>
       </View>
@@ -114,96 +85,18 @@ export default function WorkoutRestCard({ time, onAdd15, onRemove15, onSkip }: W
 }
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  titleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  icon: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    backgroundColor: Colors.surfaceLight,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  title: {
-    color: Colors.text,
-    fontSize: 16,
-    fontWeight: "900",
-  },
-  timer: {
-    color: Colors.primary,
-    fontSize: 30,
-    lineHeight: 34,
-    fontWeight: "900",
-    fontVariant: ["tabular-nums"],
-  },
-  progressTrack: {
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: Colors.surfaceLight,
-    overflow: "hidden",
-    marginTop: 12,
-  },
-  progressFill: {
-    height: "100%",
-    borderRadius: 3,
-    backgroundColor: Colors.primary,
-  },
-  controls: {
-    flexDirection: "row",
-    gap: 8,
-    marginTop: 14,
-  },
-  adjustButton: {
-    flex: 1,
-    minHeight: 44,
-    borderRadius: 12,
-    backgroundColor: Colors.background,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 4,
-  },
-  adjustText: {
-    color: Colors.text,
-    fontSize: 13,
-    fontWeight: "900",
-  },
-  skipButton: {
-    flex: 1.15,
-    minHeight: 44,
-    borderRadius: 12,
-    backgroundColor: Colors.primary,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 5,
-  },
-  skipText: {
-    color: "#FFFFFF",
-    fontSize: 13,
-    fontWeight: "900",
-  },
-  hintRow: {
-    marginTop: 11,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 8,
-  },
-  hint: {
-    flex: 1,
-    color: Colors.textMuted,
-    fontSize: 10,
-    fontWeight: "600",
-  },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  titleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  icon: { width: 32, height: 32, borderRadius: 10, backgroundColor: Colors.surfaceLight, alignItems: "center", justifyContent: "center" },
+  title: { color: Colors.text, fontSize: 16, fontWeight: "900" },
+  timer: { color: Colors.primary, fontSize: 30, lineHeight: 34, fontWeight: "900", fontVariant: ["tabular-nums"] },
+  progressTrack: { height: 5, borderRadius: 3, backgroundColor: Colors.surfaceLight, overflow: "hidden", marginTop: 12 },
+  progressFill: { height: "100%", borderRadius: 3, backgroundColor: Colors.primary },
+  controls: { flexDirection: "row", gap: 8, marginTop: 14 },
+  adjustButton: { flex: 1, minHeight: 44, borderRadius: 12, backgroundColor: Colors.background, borderWidth: 1, borderColor: Colors.border, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4 },
+  adjustText: { color: Colors.text, fontSize: 13, fontWeight: "900" },
+  skipButton: { flex: 1.15, minHeight: 44, borderRadius: 12, backgroundColor: Colors.primary, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5 },
+  skipText: { color: "#FFFFFF", fontSize: 13, fontWeight: "900" },
+  hintRow: { marginTop: 11, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
+  hint: { flex: 1, color: Colors.textMuted, fontSize: 10, fontWeight: "600" },
 });
