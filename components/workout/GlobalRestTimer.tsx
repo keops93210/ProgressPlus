@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { AppState, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Minus, Plus, Timer, X } from "lucide-react-native";
-import * as Haptics from "expo-haptics";
+import { Check, Minus, Plus, Timer, X } from "lucide-react-native";
 
 import Colors from "@/constants/colors";
 import { useRestTimerStore } from "@/stores/rest-timer.store";
+import { getRestFeedbackSettings } from "@/services/rest-feedback.service";
 
 function formatTime(seconds: number) {
   const minutes = Math.floor(seconds / 60);
@@ -19,29 +19,46 @@ export default function GlobalRestTimer() {
   const [expanded, setExpanded] = useState(false);
   const previousRemaining = useRef<number | null>(null);
 
-  useEffect(() => { void hydrate(); }, [hydrate]);
+  useEffect(() => {
+    void hydrate();
+  }, [hydrate]);
 
   useEffect(() => {
     if (!active) return;
-    const interval = setInterval(sync, 1000);
+    const interval = setInterval(sync, 500);
     return () => clearInterval(interval);
   }, [active, sync]);
 
   useEffect(() => {
-    const subscription = AppState.addEventListener("change", state => {
+    const subscription = AppState.addEventListener("change", (state) => {
       if (state === "active") sync();
     });
     return () => subscription.remove();
   }, [sync]);
 
+  // Feedback is configured in Options, never inside the timer UI.
   useEffect(() => {
     if (!active || !hydrated) return;
     if (previousRemaining.current !== null && previousRemaining.current > 0 && remaining === 0) {
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      void getRestFeedbackSettings().then((settings) => {
+        if (settings.vibrationEnabled) {
+          // Native notification handles the background case; this is only the foreground haptic.
+          import("expo-haptics").then(({ default: Haptics }) => {
+            void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          });
+        }
+      });
       setExpanded(true);
     }
     previousRemaining.current = remaining;
   }, [active, hydrated, remaining]);
+
+  useEffect(() => {
+    if (!active) {
+      previousRemaining.current = null;
+      setExpanded(false);
+    }
+  }, [active]);
 
   if (!hydrated || !active) return null;
 
@@ -51,7 +68,7 @@ export default function GlobalRestTimer() {
     <View pointerEvents="box-none" style={[styles.layer, { top: insets.top + 8 }]}>
       <View style={styles.shadow}>
         <View style={styles.pill}>
-          <Pressable style={styles.main} onPress={() => setExpanded(value => !value)}>
+          <Pressable style={styles.main} onPress={() => setExpanded((value) => !value)}>
             <View style={styles.iconWrap}>
               <Timer size={19} color="#FFFFFF" strokeWidth={2.5} />
             </View>
@@ -63,7 +80,7 @@ export default function GlobalRestTimer() {
               <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
             </View>
           </Pressable>
-          <Pressable style={styles.close} onPress={() => void skip()} hitSlop={10}>
+          <Pressable style={styles.close} onPress={() => void skip()} hitSlop={10} accessibilityLabel="Fermer le minuteur">
             <X size={18} color={Colors.textSecondary} />
           </Pressable>
         </View>
@@ -72,16 +89,17 @@ export default function GlobalRestTimer() {
           <View style={styles.expanded}>
             <Text style={styles.expandedTitle}>Encore {formatTime(remaining)} avant la prochaine série</Text>
             <View style={styles.controls}>
-              <Pressable style={styles.control} onPress={() => void remove(15)}>
+              <Pressable style={styles.control} onPress={() => void remove(15)} accessibilityLabel="Retirer 15 secondes">
                 <Minus size={17} color={Colors.text} />
                 <Text style={styles.controlText}>15 s</Text>
               </Pressable>
-              <Pressable style={styles.controlPrimary} onPress={() => void add(15)}>
+              <Pressable style={styles.controlPrimary} onPress={() => void add(15)} accessibilityLabel="Ajouter 15 secondes">
                 <Plus size={17} color="#FFFFFF" />
                 <Text style={styles.controlPrimaryText}>15 s</Text>
               </Pressable>
-              <Pressable style={styles.skip} onPress={() => void skip()}>
-                <Text style={styles.skipText}>Passer</Text>
+              <Pressable style={styles.skip} onPress={() => void skip()} accessibilityLabel="Terminer le repos">
+                <Check size={17} color={Colors.primary} />
+                <Text style={styles.skipText}>Prêt</Text>
               </Pressable>
             </View>
           </View>
@@ -92,14 +110,47 @@ export default function GlobalRestTimer() {
 }
 
 const styles = StyleSheet.create({
-  layer: { position: "absolute", left: 14, right: 14, zIndex: 9999, elevation: 20 },
-  shadow: { shadowColor: "#000", shadowOpacity: 0.18, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 20 },
-  pill: { minHeight: 64, borderRadius: 22, backgroundColor: Colors.text, flexDirection: "row", alignItems: "center", overflow: "hidden" },
-  main: { flex: 1, minHeight: 64, flexDirection: "row", alignItems: "center", paddingLeft: 10, paddingRight: 8 },
-  iconWrap: { width: 42, height: 42, borderRadius: 14, backgroundColor: Colors.primary, alignItems: "center", justifyContent: "center" },
+  layer: {
+    position: "absolute",
+    left: 14,
+    right: 14,
+    zIndex: 9999,
+    elevation: 20,
+  },
+  shadow: {
+    shadowColor: "#000",
+    shadowOpacity: 0.18,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 20,
+  },
+  pill: {
+    minHeight: 64,
+    borderRadius: 22,
+    backgroundColor: Colors.text,
+    flexDirection: "row",
+    alignItems: "center",
+    overflow: "hidden",
+  },
+  main: {
+    flex: 1,
+    minHeight: 64,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingLeft: 10,
+    paddingRight: 8,
+  },
+  iconWrap: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: Colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   labels: { marginLeft: 10, minWidth: 92 },
   eyebrow: { color: "#C8C8D2", fontSize: 9, fontWeight: "900", letterSpacing: 1 },
-  time: { color: "#FFFFFF", fontSize: 24, fontWeight: "900", marginTop: 1 },
+  time: { color: "#FFFFFF", fontSize: 24, fontWeight: "900", marginTop: 1, fontVariant: ["tabular-nums"] },
   progressTrack: { flex: 1, height: 5, borderRadius: 4, backgroundColor: "#3A3A44", overflow: "hidden", marginLeft: 10 },
   progressFill: { height: "100%", backgroundColor: Colors.primary, borderRadius: 4 },
   close: { width: 42, alignItems: "center", justifyContent: "center" },
@@ -110,6 +161,6 @@ const styles = StyleSheet.create({
   controlText: { color: Colors.text, fontWeight: "800", fontSize: 13 },
   controlPrimary: { flex: 1, minHeight: 42, borderRadius: 13, backgroundColor: Colors.primary, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4 },
   controlPrimaryText: { color: "#FFFFFF", fontWeight: "900", fontSize: 13 },
-  skip: { paddingHorizontal: 14, minHeight: 42, borderRadius: 13, justifyContent: "center", backgroundColor: Colors.background },
-  skipText: { color: Colors.textSecondary, fontWeight: "800", fontSize: 13 },
+  skip: { flex: 1, minHeight: 42, borderRadius: 13, justifyContent: "center", alignItems: "center", flexDirection: "row", gap: 4, backgroundColor: Colors.background },
+  skipText: { color: Colors.primary, fontWeight: "900", fontSize: 13 },
 });
