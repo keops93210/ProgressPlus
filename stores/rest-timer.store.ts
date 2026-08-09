@@ -1,9 +1,11 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
+import { Platform } from "react-native";
 import { create } from "zustand";
 
 const STORAGE_KEY = "progressplus.rest.timer";
 const NOTIFICATION_KEY = "progressplus.rest.timer.notification";
+const CHANNEL_ID = "progressplus-rest";
 
 export interface RestTimerState {
   active: boolean;
@@ -29,8 +31,19 @@ async function clearStorage() {
   await Promise.all([AsyncStorage.removeItem(STORAGE_KEY), AsyncStorage.removeItem(NOTIFICATION_KEY)]);
 }
 
+async function prepareNotifications() {
+  if (Platform.OS === "android") {
+    await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
+      name: "Temps de repos",
+      importance: Notifications.AndroidImportance.HIGH,
+      vibrationPattern: [0, 250, 150, 250],
+    });
+  }
+}
+
 async function scheduleNotification(seconds: number) {
   try {
+    await prepareNotifications();
     const current = await Notifications.getPermissionsAsync();
     if (!current.granted) {
       const requested = await Notifications.requestPermissionsAsync();
@@ -47,6 +60,7 @@ async function scheduleNotification(seconds: number) {
         type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
         seconds: Math.max(1, Math.round(seconds)),
         repeats: false,
+        ...(Platform.OS === "android" ? { channelId: CHANNEL_ID } : {}),
       },
     });
   } catch (error) {
