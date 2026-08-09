@@ -1,12 +1,16 @@
 import { Text, VStack } from "@expo/ui/swift-ui";
-import { font, foregroundStyle, padding } from "@expo/ui/swift-ui/modifiers";
+import {
+  font,
+  foregroundStyle,
+  padding,
+} from "@expo/ui/swift-ui/modifiers";
 import {
   createLiveActivity,
   type LiveActivityEnvironment,
 } from "expo-widgets";
 
 type RestTimerActivityProps = {
-  remaining: number;
+  endAt: number;
   duration: number;
 };
 
@@ -16,9 +20,27 @@ const RestTimerActivity = (
 ) => {
   "widget";
 
-  const minutes = Math.floor(props.remaining / 60);
-  const seconds = props.remaining % 60;
-  const time = `${minutes}:${seconds.toString().padStart(2, "0")}`;
+  const startAt = new Date(props.endAt - props.duration * 1000);
+  const endAt = new Date(props.endAt);
+
+  const timer = (
+    <Text
+      timerInterval={{ lower: startAt, upper: endAt }}
+      countsDown
+      modifiers={[
+        font({ weight: "bold", size: 34 }),
+        foregroundStyle("#FFFFFF"),
+      ]}
+    />
+  );
+
+  const compactTimer = (
+    <Text
+      timerInterval={{ lower: startAt, upper: endAt }}
+      countsDown
+      modifiers={[font({ weight: "bold", size: 13 })]}
+    />
+  );
 
   return {
     banner: (
@@ -31,14 +53,7 @@ const RestTimerActivity = (
         >
           PROGRESS+
         </Text>
-        <Text
-          modifiers={[
-            font({ weight: "bold", size: 34 }),
-            foregroundStyle("#FFFFFF"),
-          ]}
-        >
-          {time}
-        </Text>
+        {timer}
         <Text
           modifiers={[font({ size: 13 }), foregroundStyle("#BBBBBB")]}
         >
@@ -49,17 +64,17 @@ const RestTimerActivity = (
     compactLeading: (
       <Text modifiers={[font({ weight: "bold", size: 12 })]}>⏱</Text>
     ),
-    compactTrailing: (
-      <Text modifiers={[font({ weight: "bold", size: 13 })]}>{time}</Text>
-    ),
-    minimal: (
-      <Text modifiers={[font({ weight: "bold", size: 12 })]}>{time}</Text>
-    ),
+    compactTrailing: compactTimer,
+    minimal: compactTimer,
     expandedLeading: (
       <Text modifiers={[font({ weight: "bold", size: 14 })]}>Repos</Text>
     ),
     expandedTrailing: (
-      <Text modifiers={[font({ weight: "bold", size: 26 })]}>{time}</Text>
+      <Text
+        timerInterval={{ lower: startAt, upper: endAt }}
+        countsDown
+        modifiers={[font({ weight: "bold", size: 26 })]}
+      />
     ),
     expandedBottom: (
       <Text modifiers={[font({ size: 12 })]}>Prochaine série</Text>
