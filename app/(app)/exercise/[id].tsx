@@ -1,12 +1,12 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { ArrowLeft, CheckCircle2, Dumbbell, Maximize2, TriangleAlert } from "lucide-react-native";
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ArrowLeft, CheckCircle2, Dumbbell, TriangleAlert } from "lucide-react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import PectoralAnatomyCard from "@/components/exercise/PectoralAnatomyCard";
+import AnatomyFigure from "@/components/exercise/AnatomyFigure";
 import Colors from "@/constants/colors";
 import { getExerciseGuide } from "@/data/exercise-guides";
-
-const pectoralAnatomyImage = "https://commons.wikimedia.org/wiki/Special:Redirect/file/Pectoralis-major.png";
 
 export default function ExerciseDetailScreen() {
   const params = useLocalSearchParams<{ id: string; name?: string; muscle?: string; equipment?: string }>();
@@ -37,52 +37,21 @@ export default function ExerciseDetailScreen() {
           </View>
         </View>
 
-        <View style={styles.anatomyCard}>
-          <View style={styles.anatomyHeader}>
+        {isPectoral ? (
+          <PectoralAnatomyCard exerciseName={name} secondary={secondary} />
+        ) : (
+          <View style={styles.anatomyCard}>
             <View>
-              <Text style={styles.sectionKicker}>ZONE TRAVAILLÉE</Text>
-              <Text style={styles.sectionTitle}>Anatomie du muscle sollicité</Text>
+              <Text style={styles.sectionTitle}>Zone travaillée</Text>
+              <Text style={styles.sectionSubtitle}>Vue anatomique simplifiée</Text>
             </View>
-            <View style={styles.infoBadge}><Text style={styles.infoText}>i</Text></View>
+            <View style={styles.figureWrap}>
+              <AnatomyFigure primary={guide.primary} />
+            </View>
+            <View style={styles.primaryBadge}><View style={styles.dot} /><Text style={styles.primaryText}>Muscle principal : {primaryLabel}</Text></View>
+            {secondary.length > 0 ? <Text style={styles.secondary}>Secondaires : {secondary.join(" · ")}</Text> : null}
           </View>
-
-          <View style={styles.figureFrame}>
-            {isPectoral ? (
-              <Image source={{ uri: pectoralAnatomyImage }} style={styles.anatomyImage} resizeMode="contain" />
-            ) : (
-              <View style={styles.genericFigure}>
-                <Dumbbell size={42} color={Colors.primary} />
-                <Text style={styles.genericTitle}>Illustration anatomique à venir</Text>
-                <Text style={styles.genericText}>Une vue dédiée sera ajoutée pour ce groupe musculaire.</Text>
-              </View>
-            )}
-            <View style={styles.imageLabel}><View style={styles.dot} /><Text style={styles.imageLabelText}>{primaryLabel}</Text></View>
-            <Pressable style={styles.fullscreenButton} accessibilityRole="button" accessibilityLabel="Agrandir l'anatomie">
-              <Maximize2 size={17} color="#FFFFFF" />
-            </Pressable>
-          </View>
-
-          <View style={styles.summaryRow}>
-            <View style={styles.summaryBlock}>
-              <Text style={styles.summaryLabel}>MUSCLE PRINCIPAL</Text>
-              <Text style={styles.summaryValue}>{primaryLabel}</Text>
-            </View>
-            <View style={styles.summaryDivider} />
-            <View style={styles.summaryBlock}>
-              <Text style={styles.summaryLabel}>MUSCLES SECONDAIRES</Text>
-              <Text style={styles.summarySecondary}>{secondary.length ? secondary.join(" • ") : "—"}</Text>
-            </View>
-          </View>
-
-          {isPectoral && (
-            <View style={styles.anatomyExplanation}>
-              <Text style={styles.explanationTitle}>Les portions du grand pectoral</Text>
-              <Text style={styles.explanationText}>• Faisceau claviculaire : participe davantage aux mouvements de poussée vers le haut.</Text>
-              <Text style={styles.explanationText}>• Faisceau sternal : contribue fortement à l'adduction et à la poussée horizontale.</Text>
-              <Text style={styles.explanationText}>• Faisceau costal : intervient notamment dans l'adduction du bras.</Text>
-            </View>
-          )}
-        </View>
+        )}
 
         <GuideSection title="Position de départ" items={guide.setup} />
         <GuideSection title="Comment réaliser le mouvement" items={guide.movement} numbered />
@@ -137,29 +106,13 @@ const styles = StyleSheet.create({
   metaText: { color: Colors.textMuted, fontSize: 10, fontWeight: "700", textTransform: "uppercase" },
   metaValue: { color: Colors.text, fontSize: 13, fontWeight: "800", marginTop: 3 },
   anatomyCard: { backgroundColor: Colors.surface, borderRadius: 24, padding: 18, borderWidth: 1, borderColor: Colors.border, marginBottom: 22 },
-  anatomyHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
-  sectionKicker: { color: Colors.primary, fontSize: 11, fontWeight: "900", letterSpacing: 1.2 },
-  sectionTitle: { color: Colors.text, fontSize: 20, fontWeight: "900" },
-  infoBadge: { width: 36, height: 36, borderRadius: 12, backgroundColor: Colors.surfaceLight, alignItems: "center", justifyContent: "center" },
-  infoText: { color: Colors.primary, fontSize: 20, fontWeight: "900" },
-  figureFrame: { height: 380, borderRadius: 20, backgroundColor: "#FAFAFC", borderWidth: 1, borderColor: Colors.border, overflow: "hidden", position: "relative" },
-  anatomyImage: { width: "100%", height: "100%" },
-  genericFigure: { flex: 1, alignItems: "center", justifyContent: "center", padding: 30 },
-  genericTitle: { color: Colors.text, fontSize: 17, fontWeight: "900", marginTop: 12 },
-  genericText: { color: Colors.textSecondary, fontSize: 13, lineHeight: 19, textAlign: "center", marginTop: 7 },
-  imageLabel: { position: "absolute", left: 12, bottom: 12, flexDirection: "row", alignItems: "center", backgroundColor: "rgba(255,255,255,0.96)", borderRadius: 14, paddingHorizontal: 11, paddingVertical: 8, borderWidth: 1, borderColor: Colors.border },
-  dot: { width: 9, height: 9, borderRadius: 5, backgroundColor: Colors.primary, marginRight: 7 },
-  imageLabelText: { color: Colors.primaryDark, fontSize: 12, fontWeight: "900" },
-  fullscreenButton: { position: "absolute", top: 12, right: 12, width: 38, height: 38, borderRadius: 12, backgroundColor: "rgba(20,20,28,0.82)", alignItems: "center", justifyContent: "center" },
-  summaryRow: { flexDirection: "row", gap: 14, marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: Colors.border },
-  summaryBlock: { flex: 1 },
-  summaryDivider: { width: 1, backgroundColor: Colors.border },
-  summaryLabel: { color: Colors.primary, fontSize: 10, fontWeight: "900", letterSpacing: 1 },
-  summaryValue: { color: Colors.text, fontSize: 17, fontWeight: "900", marginTop: 5 },
-  summarySecondary: { color: Colors.textSecondary, fontSize: 13, lineHeight: 19, marginTop: 5 },
-  anatomyExplanation: { marginTop: 14, padding: 14, borderRadius: 16, backgroundColor: Colors.surfaceLight },
-  explanationTitle: { color: Colors.primaryDark, fontSize: 15, fontWeight: "900", marginBottom: 7 },
-  explanationText: { color: Colors.textSecondary, fontSize: 13, lineHeight: 20, marginTop: 3 },
+  sectionTitle: { color: Colors.text, fontSize: 19, fontWeight: "900" },
+  sectionSubtitle: { color: Colors.textMuted, fontSize: 12, marginTop: 4 },
+  figureWrap: { alignItems: "center", marginVertical: 8 },
+  primaryBadge: { flexDirection: "row", alignItems: "center", backgroundColor: Colors.surfaceLight, borderRadius: 12, padding: 11 },
+  dot: { width: 9, height: 9, borderRadius: 5, backgroundColor: Colors.primary, marginRight: 8 },
+  primaryText: { color: Colors.primaryDark, fontSize: 13, fontWeight: "800" },
+  secondary: { color: Colors.textSecondary, fontSize: 12, marginTop: 10, lineHeight: 18 },
   section: { marginBottom: 22 },
   step: { flexDirection: "row", alignItems: "flex-start", marginTop: 11 },
   stepNumber: { width: 28, height: 28, borderRadius: 14, backgroundColor: Colors.surfaceLight, alignItems: "center", justifyContent: "center", marginRight: 10 },
