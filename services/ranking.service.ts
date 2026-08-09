@@ -37,40 +37,21 @@ export async function getRankingProfile(userId: string): Promise<RankingProfile>
   if (error) throw error;
   if (data) return data as RankingProfile;
 
-  const initial = {
-    user_id: userId,
-    score: 0,
-    rank: "Fer" as ProgressRank,
-    season: 1,
-    season_points: 0,
-    streak_days: 0,
-    updated_at: new Date().toISOString(),
-  };
-
-  const { data: created, error: createError } = await supabase
-    .from("progress_profiles")
-    .upsert(initial, { onConflict: "user_id", ignoreDuplicates: true })
-    .select()
-    .maybeSingle();
-
+  const initial = { user_id: userId, score: 0, rank: "Fer" as ProgressRank, season: 1, season_points: 0, streak_days: 0, updated_at: new Date().toISOString() };
+  const { data: created, error: createError } = await supabase.from("progress_profiles").upsert(initial, { onConflict: "user_id", ignoreDuplicates: true }).select().maybeSingle();
   if (createError) throw createError;
   if (created) return created as RankingProfile;
 
-  const { data: existing, error: retryError } = await supabase
-    .from("progress_profiles")
-    .select("*")
-    .eq("user_id", userId)
-    .single();
-
+  const { data: existing, error: retryError } = await supabase.from("progress_profiles").select("*").eq("user_id", userId).single();
   if (retryError) throw retryError;
   return existing as RankingProfile;
 }
 
 export function calculateWorkoutPoints(input: { volume: number; totalSets: number; personalRecords?: number; consistencyBonus?: number; }) {
-  const volumePoints = Math.min(100, Math.floor(input.volume / 500));
-  const setPoints = Math.min(30, input.totalSets * 2);
+  const volumePoints = Math.min(100, Math.floor(Math.max(0, input.volume) / 500));
+  const setPoints = Math.min(60, Math.max(0, input.totalSets) * 2);
   const consistencyBonus = Math.max(0, Math.min(25, input.consistencyBonus ?? 0));
-  const prBonus = Math.min(100, (input.personalRecords ?? 0) * 25);
+  const prBonus = Math.min(100, Math.max(0, input.personalRecords ?? 0) * 25);
   return volumePoints + setPoints + consistencyBonus + prBonus;
 }
 
@@ -104,14 +85,30 @@ export async function calculateStreak(userId: string) {
 }
 
 export async function awardWorkoutPoints(userId: string, input: { volume: number; totalSets: number; personalRecords?: number; sessionId?: string; }) {
+  // Le caller peut fournir l'ID de session. Sinon, on récupère la dernière séance
+  // terminée : cette fonction est appelée immédiatement après sa finalisation.
+  let sessionId = input.sessionId;
+  if (!sessionId) {
+    const { data: latestSession, error: latestSessionError } = await supabase
+      .from("workout_sessions")
+      .select("id")
+      .eq("user_id", userId)
+      .not("finished_at", "is", null)
+      .order("finished_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (latestSessionError) throw latestSessionError;
+    sessionId = latestSession?.id ?? undefined;
+  }
+
   // Une séance terminée ne doit jamais pouvoir rapporter deux fois les mêmes points.
-  if (input.sessionId) {
+  if (sessionId) {
     const { data: existingEvent, error: existingEventError } = await supabase
       .from("progress_score_events")
       .select("points")
       .eq("user_id", userId)
       .eq("event_type", "workout_completed")
-      .eq("metadata->>session_id", input.sessionId)
+      .eq("metadata->>session_id", sessionId)
       .limit(1)
       .maybeSingle();
     if (existingEventError) throw existingEventError;
@@ -126,26 +123,14 @@ export async function awardWorkoutPoints(userId: string, input: { volume: number
   const nextScore = profile.score + points;
   const nextRank = [...RANKS].reverse().find((rank) => nextScore >= rank.min) ?? RANKS[0];
 
-  const { data, error } = await supabase.from("progress_profiles").update({
-    score: nextScore,
-    rank: nextRank.name,
-    season_points: profile.season_points + points,
-    streak_days: streak.current,
-    updated_at: new Date().toISOString(),
-  }).eq("user_id", userId).select().single();
+  const { data, error } = await supabase.from("progress_profiles").update({ score: nextScore, rank: nextRank.name, season_points: profile.season_points + points, streak_days: streak.current, updated_at: new Date().toISOString() }).eq("user_id", userId).select().single();
   if (error) throw error;
 
   const { error: eventError } = await supabase.from("progress_score_events").insert({
     user_id: userId,
     event_type: "workout_completed",
     points,
-    metadata: {
-      session_id: input.sessionId ?? null,
-      volume: input.volume,
-      total_sets: input.totalSets,
-      personal_records: input.personalRecords ?? 0,
-      streak_days: streak.current,
-    },
+    metadata: { session_id: sessionId ?? null, volume: input.volume, total_sets: input.totalSets, personal_records: input.personalRecords ?? 0, streak_days: streak.current },
   });
   if (eventError) throw eventError;
 
