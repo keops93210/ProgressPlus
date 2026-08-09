@@ -1,5 +1,5 @@
 import ExerciseCard from "@/components/exercise/ExerciseCard";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect } from "expo-router";
 import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useState } from "react";
 import {

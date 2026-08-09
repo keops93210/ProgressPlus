@@ -1,4 +1,4 @@
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect } from "expo-router";
 import { router } from "expo-router";
 import { Activity, ChevronRight, Flame, Moon, Smile, Sparkles, Trophy, Zap } from "lucide-react-native";
 import { useCallback, useState } from "react";
@@ -275,3 +275,4 @@ const styles = StyleSheet.create({
   emptyRecord: { backgroundColor: Colors.surface, borderRadius: 18, padding: 16, borderWidth: 1, borderColor: Colors.border, flexDirection: "row", alignItems: "center", gap: 12 },
   emptyRecordText: { color: Colors.textSecondary, flex: 1, fontSize: 13, lineHeight: 18 },
 });
+

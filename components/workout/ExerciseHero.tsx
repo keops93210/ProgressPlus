@@ -1,4 +1,4 @@
-import { router } from "expo-router";
+﻿import { router } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import Colors from "@/constants/colors";
 import ExerciseAnatomyArt from "@/components/exercise/ExerciseAnatomyArt";
@@ -13,7 +13,7 @@ export default function ExerciseHero({ exercise, currentSet, totalSets }: Exerci
       style={({ pressed }) => [styles.container, pressed && styles.pressed]}
       onPress={() => router.push({ pathname: "/(app)/exercise-detail", params: { id: exercise.id, name: exercise.name, muscle: exercise.primary_muscle ?? "", equipment: exercise.equipment ?? "" } })}
       accessibilityRole="button"
-      accessibilityLabel={`Voir les détails de ${exercise.name}`}
+      accessibilityLabel={`Voir les dÃ©tails de ${exercise.name}`}
     >
       <View style={styles.artWrap}>
         <ExerciseAnatomyArt name={exercise.name} primaryMuscle={exercise.primary_muscle} secondaryMuscles={exercise.secondary_muscles} equipment={exercise.equipment} />
@@ -21,8 +21,8 @@ export default function ExerciseHero({ exercise, currentSet, totalSets }: Exerci
       <View style={styles.imageWash} />
       <View style={styles.content}>
         <View style={styles.badgeRow}>
-          <View style={styles.badge}><Text style={styles.badgeText}>SÉRIE {currentSet}/{totalSets}</Text></View>
-          {exercise.is_compound && <View style={styles.compoundBadge}><Text style={styles.compoundText}>COMPOSÉ</Text></View>}
+          <View style={styles.badge}><Text style={styles.badgeText}>SÃ‰RIE {currentSet}/{totalSets}</Text></View>
+          {exercise.is_compound && <View style={styles.compoundBadge}><Text style={styles.compoundText}>COMPOSÃ‰</Text></View>}
         </View>
         <Text style={styles.title}>{exercise.name}</Text>
         <View style={styles.metaRow}>
@@ -30,7 +30,7 @@ export default function ExerciseHero({ exercise, currentSet, totalSets }: Exerci
           {exercise.equipment && <Text style={styles.meta}>{label(exercise.equipment)}</Text>}
           {exercise.difficulty && <Text style={styles.meta}>{label(exercise.difficulty)}</Text>}
         </View>
-        <Text style={styles.detailHint}>Voir la technique et les muscles →</Text>
+        <Text style={styles.detailHint}>Voir la technique et les muscles â†’</Text>
       </View>
     </Pressable>
   );
@@ -39,8 +39,8 @@ export default function ExerciseHero({ exercise, currentSet, totalSets }: Exerci
 const styles = StyleSheet.create({
   container: { height: 230, borderRadius: 24, overflow: "hidden", backgroundColor: "#FAFAFC", borderWidth: 1, borderColor: Colors.border },
   pressed: { opacity: 0.9, transform: [{ scale: 0.995 }] },
-  artWrap: StyleSheet.absoluteFill,
-  imageWash: [StyleSheet.absoluteFill, { backgroundColor: "rgba(15,15,25,0.08)" }],
+  artWrap: { ...StyleSheet.absoluteFill },
+  imageWash: { ...StyleSheet.absoluteFill, backgroundColor: "rgba(15,15,25,0.08)" },
   content: { flex: 1, justifyContent: "flex-end", padding: 18 },
   badgeRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 },
   badge: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: Colors.primary },
@@ -52,3 +52,4 @@ const styles = StyleSheet.create({
   meta: { color: Colors.text, fontSize: 12, fontWeight: "700", backgroundColor: "rgba(255,255,255,0.86)", paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999 },
   detailHint: { color: Colors.primaryDark, fontSize: 11, fontWeight: "900", marginTop: 9 },
 });
+

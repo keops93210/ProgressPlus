@@ -40,7 +40,11 @@
         }
       ],
       "expo-font",
-      "expo-notifications"
+      "expo-notifications",
+      "expo-image",
+      "expo-status-bar",
+      "expo-web-browser",
+      "expo-widgets"
     ],
     "experiments": {
       "typedRoutes": true,
