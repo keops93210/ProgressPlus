@@ -23,7 +23,7 @@ import {
 import { ProgramExercise } from "@/types/programExercise";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function WorkoutSessionScreen() {
@@ -101,9 +101,7 @@ export default function WorkoutSessionScreen() {
       }
     }
     loadWorkout();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [programId, userId]);
 
   useEffect(() => {
@@ -140,9 +138,7 @@ export default function WorkoutSessionScreen() {
       }
     }
     loadExerciseData();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [exercise?.exercise_id, userId, checkInDone]);
 
   useEffect(() => {
@@ -278,6 +274,22 @@ export default function WorkoutSessionScreen() {
     <SafeAreaView style={styles.container}>
       <Header title={exercise?.exercises.name ?? "Aucun exercice"} subtitle={`Série ${currentSet} / ${totalSets}`} />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+        {exercise ? (
+          <Pressable onPress={() => router.push({ pathname: "/(app)/exercise-detail", params: { id: exercise.exercise_id } })} style={({ pressed }) => [styles.exerciseHero, pressed && styles.exerciseHeroPressed]}>
+            <View style={styles.exerciseImageWrap}>
+              {exercise.exercises.image_url ? (
+                <Image source={{ uri: exercise.exercises.image_url }} style={styles.exerciseImage} resizeMode="cover" />
+              ) : (
+                <View style={styles.exerciseImageFallback}><Text style={styles.exerciseImageFallbackText}>💪</Text></View>
+              )}
+            </View>
+            <View style={styles.exerciseHeroCopy}>
+              <Text style={styles.exerciseHeroEyebrow}>EXERCICE ACTUEL</Text>
+              <Text style={styles.exerciseHeroTitle} numberOfLines={2}>{exercise.exercises.name}</Text>
+              <Text style={styles.exerciseHeroLink}>Voir la technique et l'anatomie →</Text>
+            </View>
+          </Pressable>
+        ) : null}
         {readinessMessage && <View style={styles.readiness}><Text style={styles.readinessText}>{readinessMessage}</Text></View>}
         {isResting && <WorkoutRestCard time={formatTime(restTime)} onAdd15={() => setRestTime((time) => time + 15)} onRemove15={() => setRestTime((time) => Math.max(0, time - 15))} onSkip={() => { setIsResting(false); setRestTime(exercise?.rest_seconds || 120); }} />}
         <View style={styles.targetCard}>
@@ -308,6 +320,16 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background, padding: 20 },
   checkinContent: { paddingTop: 20, paddingBottom: 40 },
   content: { paddingTop: 20, paddingBottom: 40, gap: 20 },
+  exerciseHero: { flexDirection: "row", alignItems: "center", padding: 12, borderRadius: 20, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border },
+  exerciseHeroPressed: { opacity: 0.75 },
+  exerciseImageWrap: { width: 82, height: 82, borderRadius: 16, overflow: "hidden", backgroundColor: Colors.surfaceLight },
+  exerciseImage: { width: "100%", height: "100%" },
+  exerciseImageFallback: { flex: 1, alignItems: "center", justifyContent: "center" },
+  exerciseImageFallbackText: { fontSize: 30 },
+  exerciseHeroCopy: { flex: 1, marginLeft: 13 },
+  exerciseHeroEyebrow: { color: Colors.primary, fontSize: 9, fontWeight: "900", letterSpacing: 1.2 },
+  exerciseHeroTitle: { color: Colors.text, fontSize: 17, lineHeight: 21, fontWeight: "900", marginTop: 4 },
+  exerciseHeroLink: { color: Colors.textMuted, fontSize: 11, fontWeight: "700", marginTop: 6 },
   readiness: { padding: 14, borderRadius: 15, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.primary },
   readinessText: { color: Colors.text, fontSize: 13, lineHeight: 19, fontWeight: "600" },
   targetCard: { padding: 16, borderRadius: 16, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border },
