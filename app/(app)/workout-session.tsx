@@ -1,6 +1,5 @@
 import WorkoutProgressCard from "@/components/workout/WorkoutProgressCard";
 import WorkoutRepsCard from "@/components/workout/WorkoutRepsCard";
-import WorkoutRestCard from "@/components/workout/WorkoutRestCard";
 import WorkoutWeightCard from "@/components/workout/WorkoutWeightCard";
 import LastPerformance from "@/components/workout/LastPerformance";
 import WorkoutCheckIn, { WorkoutCheckInValues } from "@/components/workout/WorkoutCheckIn";
@@ -10,6 +9,7 @@ import Colors from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthContext";
 import { saveRecoveryCheckin, getRecoveryAdvice } from "@/services/recovery.service";
 import { awardWorkoutPoints } from "@/services/ranking.service";
+import { useRestTimerStore } from "@/stores/rest-timer.store";
 import {
   finishWorkoutSession,
   getLastPerformance,
@@ -29,6 +29,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 export default function WorkoutSessionScreen() {
   const { programId } = useLocalSearchParams<{ programId: string }>();
   const { user } = useAuth();
+  const { start: startRest } = useRestTimerStore();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -38,8 +39,6 @@ export default function WorkoutSessionScreen() {
   const [currentSet, setCurrentSet] = useState(1);
   const [weight, setWeight] = useState(0);
   const [reps, setReps] = useState(8);
-  const [restTime, setRestTime] = useState(120);
-  const [isResting, setIsResting] = useState(false);
   const [completedVolume, setCompletedVolume] = useState(0);
   const [completedTotalSets, setCompletedTotalSets] = useState(0);
   const [personalRecordsThisSession, setPersonalRecordsThisSession] = useState(0);
@@ -141,22 +140,6 @@ export default function WorkoutSessionScreen() {
     return () => { cancelled = true; };
   }, [exercise?.exercise_id, userId, checkInDone]);
 
-  useEffect(() => {
-    if (!exercise) return;
-    setRestTime(exercise.rest_seconds || 120);
-  }, [exercise?.exercise_id]);
-
-  useEffect(() => {
-    if (!isResting) return;
-    if (restTime <= 0) {
-      setIsResting(false);
-      setRestTime(exercise?.rest_seconds || 120);
-      return;
-    }
-    const timer = setTimeout(() => setRestTime((previous) => previous - 1), 1000);
-    return () => clearTimeout(timer);
-  }, [isResting, restTime, exercise?.rest_seconds]);
-
   async function handleCheckIn(values: WorkoutCheckInValues) {
     if (!sessionId || !userId) return;
     try {
@@ -195,15 +178,14 @@ export default function WorkoutSessionScreen() {
 
       if (currentSet < exercise.sets) {
         setCurrentSet((previous) => previous + 1);
-        setRestTime(exercise.rest_seconds || 120);
-        setIsResting(true);
+        await startRest(exercise.rest_seconds || 120);
         return;
       }
+
       if (currentExerciseIndex < exercises.length - 1) {
         setCurrentExerciseIndex((previous) => previous + 1);
         setCurrentSet(1);
-        setRestTime(exercise.rest_seconds || 120);
-        setIsResting(true);
+        await startRest(exercise.rest_seconds || 120);
         return;
       }
 
@@ -219,7 +201,6 @@ export default function WorkoutSessionScreen() {
         }
       }
 
-      setIsResting(false);
       setCompleted(true);
     } catch (error) {
       console.log("SAVE SET ERROR =", error);
@@ -291,7 +272,6 @@ export default function WorkoutSessionScreen() {
           </Pressable>
         ) : null}
         {readinessMessage && <View style={styles.readiness}><Text style={styles.readinessText}>{readinessMessage}</Text></View>}
-        {isResting && <WorkoutRestCard time={formatTime(restTime)} onAdd15={() => setRestTime((time) => time + 15)} onRemove15={() => setRestTime((time) => Math.max(0, time - 15))} onSkip={() => { setIsResting(false); setRestTime(exercise?.rest_seconds || 120); }} />}
         <View style={styles.targetCard}>
           <Text style={styles.targetTitle}>Objectif</Text>
           <Text style={styles.targetValue}>{exercise ? `${exercise.min_reps}–${exercise.max_reps} répétitions` : "—"}</Text>
