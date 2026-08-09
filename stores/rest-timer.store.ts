@@ -4,6 +4,10 @@ import { Platform } from "react-native";
 import { create } from "zustand";
 
 import { getRestFeedbackSettings } from "@/services/rest-feedback.service";
+import {
+  endRestTimerLiveActivity,
+  startRestTimerLiveActivity,
+} from "@/services/rest-timer-live-activity.service";
 
 const STORAGE_KEY = "progressplus.rest.timer";
 const NOTIFICATION_KEY = "progressplus.rest.timer.notification";
@@ -26,11 +30,18 @@ export interface RestTimerState {
 
 async function cancelNotification(id: string | null) {
   if (!id) return;
-  try { await Notifications.cancelScheduledNotificationAsync(id); } catch (error) { console.log("REST NOTIFICATION CANCEL ERROR =", error); }
+  try {
+    await Notifications.cancelScheduledNotificationAsync(id);
+  } catch (error) {
+    console.log("REST NOTIFICATION CANCEL ERROR =", error);
+  }
 }
 
 async function clearStorage() {
-  await Promise.all([AsyncStorage.removeItem(STORAGE_KEY), AsyncStorage.removeItem(NOTIFICATION_KEY)]);
+  await Promise.all([
+    AsyncStorage.removeItem(STORAGE_KEY),
+    AsyncStorage.removeItem(NOTIFICATION_KEY),
+  ]);
 }
 
 async function prepareNotifications() {
@@ -82,17 +93,50 @@ export const useRestTimerStore = create<RestTimerState>((set, get) => ({
 
   hydrate: async () => {
     try {
-      const [raw, notificationId] = await Promise.all([AsyncStorage.getItem(STORAGE_KEY), AsyncStorage.getItem(NOTIFICATION_KEY)]);
-      if (!raw) { set({ hydrated: true }); return; }
+      const [raw, notificationId] = await Promise.all([
+        AsyncStorage.getItem(STORAGE_KEY),
+        AsyncStorage.getItem(NOTIFICATION_KEY),
+      ]);
+
+      if (!raw) {
+        set({ hydrated: true });
+        return;
+      }
+
       const parsed = JSON.parse(raw) as { endAt: number; duration: number };
-      const remaining = Math.max(0, Math.ceil((parsed.endAt - Date.now()) / 1000));
+      const remaining = Math.max(
+        0,
+        Math.ceil((parsed.endAt - Date.now()) / 1000)
+      );
+
       if (!parsed.endAt || remaining <= 0) {
         await cancelNotification(notificationId);
         await clearStorage();
-        set({ hydrated: true, active: false, endAt: null, duration: 0, remaining: 0, notificationId: null });
+        set({
+          hydrated: true,
+          active: false,
+          endAt: null,
+          duration: 0,
+          remaining: 0,
+          notificationId: null,
+        });
+        void endRestTimerLiveActivity();
         return;
       }
-      set({ hydrated: true, active: true, endAt: parsed.endAt, duration: parsed.duration, remaining, notificationId });
+
+      set({
+        hydrated: true,
+        active: true,
+        endAt: parsed.endAt,
+        duration: parsed.duration,
+        remaining,
+        notificationId,
+      });
+
+      startRestTimerLiveActivity({
+        endAt: parsed.endAt,
+        duration: parsed.duration,
+      });
     } catch (error) {
       console.log("REST TIMER HYDRATE ERROR =", error);
       set({ hydrated: true });
@@ -102,45 +146,97 @@ export const useRestTimerStore = create<RestTimerState>((set, get) => ({
   start: async (seconds) => {
     const safeSeconds = Math.max(1, Math.round(seconds));
     await cancelNotification(get().notificationId);
+
     const endAt = Date.now() + safeSeconds * 1000;
     const notificationId = await scheduleNotification(safeSeconds);
+
     await Promise.all([
-      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ endAt, duration: safeSeconds })),
-      notificationId ? AsyncStorage.setItem(NOTIFICATION_KEY, notificationId) : AsyncStorage.removeItem(NOTIFICATION_KEY),
+      AsyncStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ endAt, duration: safeSeconds })
+      ),
+      notificationId
+        ? AsyncStorage.setItem(NOTIFICATION_KEY, notificationId)
+        : AsyncStorage.removeItem(NOTIFICATION_KEY),
     ]);
-    set({ active: true, endAt, duration: safeSeconds, remaining: safeSeconds, notificationId });
+
+    set({
+      active: true,
+      endAt,
+      duration: safeSeconds,
+      remaining: safeSeconds,
+      notificationId,
+    });
+
+    startRestTimerLiveActivity({
+      endAt,
+      duration: safeSeconds,
+    });
   },
 
   add: async (seconds) => {
     const { active, endAt } = get();
     if (!active || !endAt) return;
-    const remaining = Math.max(0, Math.ceil((endAt - Date.now()) / 1000));
+
+    const remaining = Math.max(
+      0,
+      Math.ceil((endAt - Date.now()) / 1000)
+    );
     await get().start(remaining + seconds);
   },
 
   remove: async (seconds) => {
     const { active, endAt } = get();
     if (!active || !endAt) return;
-    const remaining = Math.max(0, Math.ceil((endAt - Date.now()) / 1000));
-    if (remaining <= seconds) { await get().skip(); return; }
+
+    const remaining = Math.max(
+      0,
+      Math.ceil((endAt - Date.now()) / 1000)
+    );
+
+    if (remaining <= seconds) {
+      await get().skip();
+      return;
+    }
+
     await get().start(remaining - seconds);
   },
 
   skip: async () => {
     await cancelNotification(get().notificationId);
     await clearStorage();
-    set({ active: false, endAt: null, duration: 0, remaining: 0, notificationId: null });
+    set({
+      active: false,
+      endAt: null,
+      duration: 0,
+      remaining: 0,
+      notificationId: null,
+    });
+    await endRestTimerLiveActivity();
   },
 
   sync: () => {
     const { active, endAt } = get();
     if (!active || !endAt) return;
-    const remaining = Math.max(0, Math.ceil((endAt - Date.now()) / 1000));
+
+    const remaining = Math.max(
+      0,
+      Math.ceil((endAt - Date.now()) / 1000)
+    );
+
     if (remaining <= 0) {
-      set({ active: false, endAt: null, duration: 0, remaining: 0, notificationId: null });
+      set({
+        active: false,
+        endAt: null,
+        duration: 0,
+        remaining: 0,
+        notificationId: null,
+      });
       void clearStorage();
+      void endRestTimerLiveActivity();
       return;
     }
+
     set({ remaining });
   },
 }));
