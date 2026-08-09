@@ -22,13 +22,12 @@ function text(value?: string | null) {
   return (value ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
-export default function ExerciseAnatomyArt({ name, primaryMuscle, secondaryMuscles, equipment, dark = false }: Props) {
+export default function ExerciseAnatomyArt({ name, primaryMuscle, secondaryMuscles, dark = false }: Props) {
   const n = text(name);
   const muscle = text(primaryMuscle);
   const secondary = (secondaryMuscles ?? []).map(text).join(" ");
 
   const isBench = /developpe couche|bench press|chest press|pec deck|ecarte|fly/.test(n);
-  const isIncline = /incline|incline|incline/.test(n);
   const isSquat = /squat|presse.*cuiss|leg press|fente|lunge/.test(n);
   const isHinge = /souleve|deadlift|hip thrust|romanian|rdl/.test(n);
   const isPull = /tirage|pulldown|rowing|row|traction|pull up|chin up/.test(n);
@@ -57,7 +56,6 @@ export default function ExerciseAnatomyArt({ name, primaryMuscle, secondaryMuscl
   return (
     <View style={[styles.wrap, { backgroundColor: bg }]}>
       <Svg width="100%" height="100%" viewBox="0 0 320 240">
-        <DefsShadow />
         {benchMode ? (
           <G>
             <Rect x="58" y="190" width="205" height="7" rx="3.5" fill="#36323F" />
@@ -120,10 +118,6 @@ export default function ExerciseAnatomyArt({ name, primaryMuscle, secondaryMuscl
       </Svg>
     </View>
   );
-}
-
-function DefsShadow() {
-  return null;
 }
 
 const styles = StyleSheet.create({
