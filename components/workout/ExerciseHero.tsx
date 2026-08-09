@@ -16,12 +16,7 @@ export default function ExerciseHero({ exercise, currentSet, totalSets }: Exerci
       accessibilityLabel={`Voir les détails de ${exercise.name}`}
     >
       <View style={styles.artWrap}>
-        <ExerciseAnatomyArt
-          name={exercise.name}
-          primaryMuscle={exercise.primary_muscle}
-          secondaryMuscles={exercise.secondary_muscles}
-          equipment={exercise.equipment}
-        />
+        <ExerciseAnatomyArt name={exercise.name} primaryMuscle={exercise.primary_muscle} secondaryMuscles={exercise.secondary_muscles} equipment={exercise.equipment} />
       </View>
       <View style={styles.imageWash} />
       <View style={styles.content}>
@@ -44,8 +39,8 @@ export default function ExerciseHero({ exercise, currentSet, totalSets }: Exerci
 const styles = StyleSheet.create({
   container: { height: 230, borderRadius: 24, overflow: "hidden", backgroundColor: "#FAFAFC", borderWidth: 1, borderColor: Colors.border },
   pressed: { opacity: 0.9, transform: [{ scale: 0.995 }] },
-  artWrap: { ...StyleSheet.absoluteFillObject },
-  imageWash: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(15,15,25,0.08)" },
+  artWrap: StyleSheet.absoluteFill,
+  imageWash: [StyleSheet.absoluteFill, { backgroundColor: "rgba(15,15,25,0.08)" }],
   content: { flex: 1, justifyContent: "flex-end", padding: 18 },
   badgeRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 },
   badge: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: Colors.primary },
