@@ -18,10 +18,8 @@ function parseTime(value: string) {
 
 /**
  * Compatibility bridge for the workout screen.
- *
- * The rest timer UI is now rendered globally by GlobalRestTimer so it stays
- * pinned while the user navigates. This component only starts/synchronizes
- * the global timer and deliberately renders no local card.
+ * The visible rest timer is rendered globally by GlobalRestTimer so it stays
+ * pinned while the user navigates through the app.
  */
 export default function WorkoutRestCard({ time, onSkip }: WorkoutRestCardProps) {
   const startedRef = useRef(false);
@@ -30,11 +28,12 @@ export default function WorkoutRestCard({ time, onSkip }: WorkoutRestCardProps) 
   const hydrated = useRestTimerStore((state) => state.hydrated);
 
   useEffect(() => {
+    if (!hydrated || startedRef.current) return;
     const seconds = parseTime(time);
     if (seconds <= 0) return;
     startedRef.current = true;
     void start(seconds);
-  }, [start, time]);
+  }, [hydrated, start, time]);
 
   useEffect(() => {
     if (!hydrated || !startedRef.current || active) return;
