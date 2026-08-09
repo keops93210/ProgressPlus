@@ -13,31 +13,54 @@ const PORTION_COLORS = {
   costal: "#3B82F6",
 };
 
+type PortionKey = "clavicular" | "sternal" | "costal";
+
 type Props = {
   exerciseName: string;
   secondary: string[];
 };
 
-function getFocus(exerciseName: string) {
+function getFocus(exerciseName: string): {
+  key: PortionKey | null;
+  title: string;
+  description: string;
+} {
   const name = exerciseName.toLowerCase();
+
   if (name.includes("incliné") || name.includes("incline")) {
     return {
-      key: "clavicular" as const,
+      key: "clavicular",
       title: "Faisceau claviculaire",
       description: "Priorité au haut des pectoraux avec l'inclinaison du banc.",
     };
   }
+
   if (name.includes("développé couché") || name.includes("bench")) {
     return {
-      key: "sternal" as const,
+      key: "sternal",
       title: "Faisceau sternal",
       description: "Le faisceau central constitue la masse principale sollicitée.",
     };
   }
+
+  if (
+    name.includes("dips") ||
+    name.includes("dip ") ||
+    name.includes("décliné") ||
+    name.includes("decline")
+  ) {
+    return {
+      key: "costal",
+      title: "Faisceau costal",
+      description: "La trajectoire et l'orientation du mouvement favorisent davantage la partie inférieure du grand pectoral.",
+    };
+  }
+
   return {
     key: null,
     title: "Grand pectoral",
-    description: "Les trois portions participent au mouvement. La sollicitation dépend de l'angle et de la trajectoire.",
+    description:
+      "Les trois portions participent au mouvement. La sollicitation dépend de l'angle et de la trajectoire.",
   };
 }
 
@@ -97,9 +120,24 @@ export default function PectoralAnatomyCard({ exerciseName, secondary }: Props) 
 
       <View style={styles.portionsCard}>
         <Text style={styles.portionsTitle}>Les portions du grand pectoral</Text>
-        <Portion name="Faisceau claviculaire" label="Haut des pectoraux" color={PORTION_COLORS.clavicular} active={focus.key === "clavicular"} />
-        <Portion name="Faisceau sternal" label="Partie centrale" color={PORTION_COLORS.sternal} active={focus.key === "sternal"} />
-        <Portion name="Faisceau costal" label="Partie inférieure" color={PORTION_COLORS.costal} active={focus.key === "costal"} />
+        <Portion
+          name="Faisceau claviculaire"
+          label="Haut des pectoraux"
+          color={PORTION_COLORS.clavicular}
+          active={focus.key === "clavicular"}
+        />
+        <Portion
+          name="Faisceau sternal"
+          label="Partie centrale"
+          color={PORTION_COLORS.sternal}
+          active={focus.key === "sternal"}
+        />
+        <Portion
+          name="Faisceau costal"
+          label="Partie inférieure"
+          color={PORTION_COLORS.costal}
+          active={focus.key === "costal"}
+        />
         <View style={styles.focusCard}>
           <Text style={styles.focusTitle}>
             {focus.key ? "🎯 Priorité sur cet exercice" : "💡 Sollicitation"}
@@ -109,7 +147,12 @@ export default function PectoralAnatomyCard({ exerciseName, secondary }: Props) 
         </View>
       </View>
 
-      <Modal visible={fullscreen} animationType="fade" transparent onRequestClose={() => setFullscreen(false)}>
+      <Modal
+        visible={fullscreen}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setFullscreen(false)}
+      >
         <View style={styles.modalBackdrop}>
           <Pressable style={styles.modalClose} onPress={() => setFullscreen(false)}>
             <Text style={styles.modalCloseText}>Fermer</Text>
@@ -121,7 +164,17 @@ export default function PectoralAnatomyCard({ exerciseName, secondary }: Props) 
   );
 }
 
-function Portion({ name, label, color, active }: { name: string; label: string; color: string; active: boolean }) {
+function Portion({
+  name,
+  label,
+  color,
+  active,
+}: {
+  name: string;
+  label: string;
+  color: string;
+  active: boolean;
+}) {
   return (
     <View style={[styles.portion, active && styles.portionActive, active && { borderColor: color }]}>
       <View style={[styles.portionDot, { backgroundColor: color }]} />
