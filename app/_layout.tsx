@@ -4,6 +4,7 @@ import * as Notifications from "expo-notifications";
 import { useCallback, useEffect, useState } from "react";
 
 import ProgressPlusLaunch from "@/components/ui/ProgressPlusLaunch";
+import GlobalRestTimer from "@/components/workout/GlobalRestTimer";
 import { AuthProvider } from "@/contexts/AuthContext";
 
 Notifications.setNotificationHandler({
@@ -20,7 +21,7 @@ export default function RootLayout() {
   const finishLaunch = useCallback(() => setShowLaunch(false), []);
 
   useEffect(() => {
-    const subscription = Notifications.addNotificationResponseReceivedListener(response => {
+    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
       if (response.notification.request.content.data?.type === "rest-timer") {
         console.log("REST TIMER NOTIFICATION OPENED");
       }
@@ -40,6 +41,7 @@ export default function RootLayout() {
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(app)" />
       </Stack>
+      <GlobalRestTimer />
       {showLaunch && <ProgressPlusLaunch onFinished={finishLaunch} />}
     </AuthProvider>
   );
