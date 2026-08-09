@@ -2,8 +2,6 @@ import React from "react";
 import { StyleSheet, View } from "react-native";
 import Svg, { Circle, Ellipse, G, Line, Path, Rect } from "react-native-svg";
 
-import Colors from "@/constants/colors";
-
 interface Props {
   name: string;
   primaryMuscle?: string | null;
