@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { AppState, StyleSheet, Switch, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Switch, Text, TouchableOpacity, View } from "react-native";
 import { Minus, Plus, Timer, Zap } from "lucide-react-native";
 
 import Card from "@/components/ui/Card";
@@ -10,7 +10,6 @@ import {
   requestRestSoundPermission,
   setRestSoundEnabled,
   setRestVibrationEnabled,
-  triggerRestFinishedFeedback,
   RestFeedbackSettings,
 } from "@/services/rest-feedback.service";
 
@@ -36,46 +35,23 @@ function formatTime(seconds: number) {
 
 export default function WorkoutRestCard({ time, onAdd15, onRemove15, onSkip }: WorkoutRestCardProps) {
   const [settings, setSettings] = useState<RestFeedbackSettings>({ soundEnabled: true, vibrationEnabled: true });
-  const notifiedRef = useRef(false);
   const startedRef = useRef(false);
-  const { active, remaining, duration, hydrated, start, add, remove, skip, sync } = useRestTimerStore();
+  const { active, remaining, duration, hydrated, start, add, remove, skip } = useRestTimerStore();
 
   useEffect(() => {
     getRestFeedbackSettings().then(setSettings).catch(error => console.log("REST SETTINGS ERROR =", error));
   }, []);
 
   useEffect(() => {
-    void useRestTimerStore.getState().hydrate();
-  }, []);
+    if (!hydrated) return;
+    if (!active) startedRef.current = false;
+  }, [hydrated, active]);
 
   useEffect(() => {
-    if (!hydrated || startedRef.current) return;
+    if (!hydrated || active || startedRef.current) return;
     startedRef.current = true;
-    if (!active) void start(parseTime(time));
+    void start(parseTime(time));
   }, [hydrated, active, start, time]);
-
-  useEffect(() => {
-    if (!active) return;
-    const interval = setInterval(sync, 1000);
-    return () => clearInterval(interval);
-  }, [active, sync]);
-
-  useEffect(() => {
-    const subscription = AppState.addEventListener("change", state => {
-      if (state === "active") sync();
-    });
-    return () => subscription.remove();
-  }, [sync]);
-
-  useEffect(() => {
-    if (remaining > 0) {
-      notifiedRef.current = false;
-      return;
-    }
-    if (!active || notifiedRef.current) return;
-    notifiedRef.current = true;
-    triggerRestFinishedFeedback(settings).catch(error => console.log("REST FEEDBACK ERROR =", error));
-  }, [active, remaining, settings]);
 
   async function toggleSound(value: boolean) {
     if (value) {
@@ -91,8 +67,9 @@ export default function WorkoutRestCard({ time, onAdd15, onRemove15, onSkip }: W
     await setRestVibrationEnabled(value);
   }
 
-  const displayedSeconds = active ? remaining : parseTime(time);
-  const progress = duration > 0 ? Math.max(0, Math.min(1, displayedSeconds / duration)) : 0;
+  if (!hydrated || !active) return null;
+
+  const progress = duration > 0 ? Math.max(0, Math.min(1, remaining / duration)) : 0;
 
   return (
     <Card>
@@ -107,7 +84,7 @@ export default function WorkoutRestCard({ time, onAdd15, onRemove15, onSkip }: W
         <View style={styles.liveBadge}><View style={styles.liveDot} /><Text style={styles.liveText}>EN COURS</Text></View>
       </View>
 
-      <Text style={styles.timer}>{formatTime(displayedSeconds)}</Text>
+      <Text style={styles.timer}>{formatTime(remaining)}</Text>
       <View style={styles.progressTrack}><View style={[styles.progressFill, { width: `${progress * 100}%` }]} /></View>
 
       <View style={styles.controls}>
