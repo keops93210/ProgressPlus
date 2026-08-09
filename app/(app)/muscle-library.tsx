@@ -1,44 +1,21 @@
 import { router } from "expo-router";
-import {
-  ArrowLeft,
-  ChevronRight,
-  Dumbbell,
-  Target,
-} from "lucide-react-native";
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { ArrowLeft, ChevronRight, Dumbbell, Maximize2, Star } from "lucide-react-native";
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
-const muscleZones = [
-  {
-    id: "upper",
-    title: "Haut des pectoraux",
-    subtitle: "Portion claviculaire",
-    accent: "#FF4D7D",
-  },
-  {
-    id: "middle",
-    title: "Milieu des pectoraux",
-    subtitle: "Portion sternocostale",
-    accent: "#FF8A3D",
-  },
-  {
-    id: "lower",
-    title: "Fibres inférieures",
-    subtitle: "Accent inférieur du grand pectoral",
-    accent: "#FFD23F",
-  },
+const anatomyImage = "https://commons.wikimedia.org/wiki/Special:Redirect/file/Pectoralis-major.png";
+
+const muscleParts = [
+  { title: "Grand pectoral — faisceau claviculaire", text: "Partie supérieure du grand pectoral. Elle est particulièrement sollicitée lorsque le bras pousse vers l’avant et vers le haut.", color: "#9B5CFF" },
+  { title: "Grand pectoral — faisceau sternal", text: "Portion centrale et volumineuse du grand pectoral, très impliquée dans les mouvements de poussée horizontale.", color: "#4D7CFE" },
+  { title: "Grand pectoral — faisceau costal", text: "Fibres inférieures du grand pectoral. Elles participent notamment aux mouvements de poussée avec une trajectoire descendante.", color: "#20B8C8" },
+  { title: "Petit pectoral", text: "Muscle profond situé sous le grand pectoral. Il participe notamment à la stabilisation et aux mouvements de l’omoplate.", color: "#FF7043" },
 ];
 
-const popularExercises = [
-  { name: "Développé couché barre", accent: "Pectoraux" },
-  { name: "Développé couché haltères", accent: "Pectoraux" },
-  { name: "Développé incliné haltères", accent: "Accent haut" },
-  { name: "Machine convergente", accent: "Pectoraux" },
+const exercises = [
+  ["Développé couché barre", "Ensemble du grand pectoral"],
+  ["Développé incliné haltères", "Accent supérieur"],
+  ["Développé décliné", "Accent inférieur"],
+  ["Écartés haltères", "Adduction horizontale"],
 ];
 
 export default function MuscleLibraryScreen() {
@@ -46,144 +23,43 @@ export default function MuscleLibraryScreen() {
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Pressable style={styles.iconButton} onPress={() => router.back()}>
-            <ArrowLeft color="#FFFFFF" size={22} />
-          </Pressable>
-
-          <View style={styles.headerTitle}>
-            <Text style={styles.title}>Pectoraux</Text>
-            <Text style={styles.subtitle}>Groupe musculaire</Text>
-          </View>
-
-          <View style={styles.iconButton}>
-            <Dumbbell color="#4D7CFE" size={22} />
-          </View>
+          <Pressable style={styles.headerButton} onPress={() => router.back()}><ArrowLeft color="#FFFFFF" size={22} /></Pressable>
+          <View style={styles.headerTitle}><Text style={styles.title}>Pectoraux</Text><Text style={styles.subtitle}>Anatomie & fonctions</Text></View>
+          <Pressable style={styles.headerButton}><Star color="#9B5CFF" size={21} /></Pressable>
         </View>
 
-        <View style={styles.anatomyCard}>
-          <View style={styles.anatomyHeader}>
-            <View>
-              <Text style={styles.sectionTitle}>Grand pectoral</Text>
-              <Text style={styles.sectionSubtitle}>Muscle principal</Text>
-            </View>
+        <View style={styles.tabs}><View style={styles.activeTab}><Text style={styles.activeTabText}>Vue antérieure</Text></View><View style={styles.tab}><Text style={styles.tabText}>Vue latérale</Text></View></View>
 
-            <View style={styles.targetIcon}>
-              <Target color="#4D7CFE" size={22} />
-            </View>
-          </View>
-
-          <View style={styles.bodyPlaceholder}>
-            <View style={styles.shoulderLeft} />
-            <View style={styles.shoulderRight} />
-            <View style={styles.pecLeft}>
-              <View style={styles.pecHighlight} />
-            </View>
-            <View style={styles.pecRight}>
-              <View style={styles.pecHighlight} />
-            </View>
-            <View style={styles.sternum} />
-          </View>
-
-          <Text style={styles.anatomyInfo}>
-            Le grand pectoral est sollicité dans son ensemble. L’angle de l’exercice peut simplement accentuer certaines portions des fibres.
-          </Text>
+        <View style={styles.imageCard}>
+          <View style={styles.imageTop}><Text style={styles.imageTitle}>Grand pectoral</Text><Pressable style={styles.fullscreen}><Maximize2 color="#FFFFFF" size={16} /><Text style={styles.fullscreenText}>Plein écran</Text></Pressable></View>
+          <Image source={{ uri: anatomyImage }} style={styles.anatomyImage} resizeMode="contain" />
+          <Text style={styles.imageCaption}>Illustration anatomique — grand pectoral</Text>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quelle zone veux-tu travailler ?</Text>
-          <Text style={styles.sectionSubtitle}>
-            Sélectionne une zone pour découvrir les exercices adaptés.
-          </Text>
-
-          {muscleZones.map((zone) => (
-            <Pressable key={zone.id} style={({ pressed }) => [styles.zoneCard, pressed && styles.pressed]}>
-              <View style={[styles.zoneIndicator, { backgroundColor: zone.accent }]} />
-              <View style={styles.zoneContent}>
-                <Text style={styles.zoneTitle}>{zone.title}</Text>
-                <Text style={styles.zoneSubtitle}>{zone.subtitle}</Text>
-              </View>
-              <ChevronRight color="#A1A1AA" size={22} />
-            </Pressable>
-          ))}
+        <View style={styles.infoCard}>
+          <View style={styles.infoColumn}><Text style={styles.infoTitle}>RÔLE PRINCIPAL</Text><Text style={styles.infoText}>Les pectoraux participent principalement aux mouvements de poussée, à l’adduction horizontale du bras et à la rotation interne de l’épaule.</Text></View>
+          <View style={styles.divider} />
+          <View style={styles.infoColumn}><Text style={styles.infoTitle}>FONCTIONS</Text><Text style={styles.bullet}>✓ Adduction horizontale</Text><Text style={styles.bullet}>✓ Flexion du bras</Text><Text style={styles.bullet}>✓ Rotation interne</Text><Text style={styles.bullet}>✓ Stabilisation de l’épaule</Text></View>
         </View>
 
-        <View style={styles.section}>
-          <View style={styles.sectionRow}>
-            <View>
-              <Text style={styles.sectionTitle}>Exercices populaires</Text>
-              <Text style={styles.sectionSubtitle}>Pour développer les pectoraux</Text>
-            </View>
-            <Pressable>
-              <Text style={styles.seeAll}>Voir tout</Text>
-            </Pressable>
-          </View>
+        <Text style={styles.sectionTitle}>Les muscles</Text>
+        <Text style={styles.sectionSubtitle}>Comprends précisément ce que tu travailles.</Text>
+        <View style={styles.partsCard}>{muscleParts.map((part, index) => <View key={part.title} style={[styles.partRow, index === muscleParts.length - 1 && styles.lastRow]}><View style={[styles.partDot, { backgroundColor: part.color }]} /><View style={styles.partContent}><Text style={styles.partTitle}>{part.title}</Text><Text style={styles.partText}>{part.text}</Text></View><ChevronRight color="#7D8491" size={20} /></View>)}</View>
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.exerciseList}>
-            {popularExercises.map((exercise) => (
-              <Pressable key={exercise.name} style={({ pressed }) => [styles.exerciseCard, pressed && styles.pressed]}>
-                <View style={styles.exerciseImagePlaceholder}>
-                  <Dumbbell color="#4D7CFE" size={30} />
-                </View>
-                <Text style={styles.exerciseName}>{exercise.name}</Text>
-                <Text style={styles.exerciseAccent}>{exercise.accent}</Text>
-              </Pressable>
-            ))}
-          </ScrollView>
-        </View>
+        <Text style={styles.sectionTitle}>Exercices associés</Text>
+        <Text style={styles.sectionSubtitle}>Retrouve directement les exercices qui sollicitent cette zone.</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.exerciseList}>
+          {exercises.map(([name, accent]) => <Pressable key={name} style={styles.exerciseCard}><View style={styles.exerciseImage}><Dumbbell color="#9B5CFF" size={28} /></View><Text style={styles.exerciseName}>{name}</Text><Text style={styles.exerciseAccent}>{accent}</Text></Pressable>)}
+        </ScrollView>
 
-        <Pressable style={styles.progressCard}>
-          <View style={styles.progressIcon}>
-            <Target color="#FFFFFF" size={22} />
-          </View>
-          <View style={styles.progressContent}>
-            <Text style={styles.progressTitle}>Suivi & progression</Text>
-            <Text style={styles.progressSubtitle}>Suis tes performances sur les pectoraux</Text>
-          </View>
-          <ChevronRight color="#FFFFFF" size={22} />
-        </Pressable>
+        <View style={styles.tipCard}><Text style={styles.tipTitle}>CONSEIL PRO</Text><Text style={styles.tipText}>Pour un développement complet, varie les angles de poussée et contrôle la phase descendante plutôt que de chercher uniquement à augmenter la charge.</Text></View>
+
+        <Text style={styles.license}>Image anatomique : Gray's Anatomy, domaine public via Wikimedia Commons. citeturn1view0</Text>
       </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0B0D10" },
-  content: { paddingHorizontal: 18, paddingTop: 58, paddingBottom: 40 },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 22 },
-  headerTitle: { alignItems: "center" },
-  title: { color: "#FFFFFF", fontSize: 26, fontWeight: "800" },
-  subtitle: { color: "#7C83FF", fontSize: 13, fontWeight: "600", marginTop: 3 },
-  iconButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: "#171A20", alignItems: "center", justifyContent: "center" },
-  anatomyCard: { backgroundColor: "#12151A", borderRadius: 24, padding: 18, borderWidth: 1, borderColor: "#222731", marginBottom: 28 },
-  anatomyHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  targetIcon: { width: 42, height: 42, borderRadius: 21, backgroundColor: "#182044", alignItems: "center", justifyContent: "center" },
-  sectionTitle: { color: "#FFFFFF", fontSize: 19, fontWeight: "800" },
-  sectionSubtitle: { color: "#8B919D", fontSize: 13, marginTop: 4 },
-  bodyPlaceholder: { height: 300, alignItems: "center", justifyContent: "center", position: "relative", marginTop: 10 },
-  shoulderLeft: { position: "absolute", width: 62, height: 90, borderRadius: 40, backgroundColor: "#303641", left: 45, top: 45, transform: [{ rotate: "25deg" }] },
-  shoulderRight: { position: "absolute", width: 62, height: 90, borderRadius: 40, backgroundColor: "#303641", right: 45, top: 45, transform: [{ rotate: "-25deg" }] },
-  pecLeft: { position: "absolute", width: 115, height: 82, borderRadius: 60, backgroundColor: "#D94368", left: 75, top: 75, transform: [{ rotate: "-8deg" }] },
-  pecRight: { position: "absolute", width: 115, height: 82, borderRadius: 60, backgroundColor: "#D94368", right: 75, top: 75, transform: [{ rotate: "8deg" }] },
-  pecHighlight: { width: "70%", height: "55%", borderRadius: 50, backgroundColor: "#FF5A83", opacity: 0.75, alignSelf: "center", marginTop: 12 },
-  sternum: { position: "absolute", width: 8, height: 155, borderRadius: 4, backgroundColor: "#626A76", top: 67 },
-  anatomyInfo: { color: "#A6ACB8", fontSize: 13, lineHeight: 19, marginTop: 6 },
-  section: { marginBottom: 28 },
-  zoneCard: { minHeight: 76, backgroundColor: "#14171C", borderRadius: 18, borderWidth: 1, borderColor: "#242832", marginTop: 10, paddingHorizontal: 14, flexDirection: "row", alignItems: "center" },
-  zoneIndicator: { width: 5, height: 48, borderRadius: 3, marginRight: 14 },
-  zoneContent: { flex: 1 },
-  zoneTitle: { color: "#FFFFFF", fontSize: 16, fontWeight: "700" },
-  zoneSubtitle: { color: "#8B919D", fontSize: 12, marginTop: 4 },
-  sectionRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  seeAll: { color: "#5B7CFF", fontSize: 13, fontWeight: "700" },
-  exerciseList: { gap: 12, paddingTop: 14 },
-  exerciseCard: { width: 155, backgroundColor: "#14171C", borderRadius: 18, borderWidth: 1, borderColor: "#242832", overflow: "hidden" },
-  exerciseImagePlaceholder: { height: 105, backgroundColor: "#1A1E25", alignItems: "center", justifyContent: "center" },
-  exerciseName: { color: "#FFFFFF", fontSize: 14, fontWeight: "700", paddingHorizontal: 12, paddingTop: 12 },
-  exerciseAccent: { color: "#8B919D", fontSize: 12, paddingHorizontal: 12, paddingTop: 5, paddingBottom: 14 },
-  progressCard: { backgroundColor: "#263DAD", borderRadius: 20, padding: 16, flexDirection: "row", alignItems: "center" },
-  progressIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: "#3F5FE5", alignItems: "center", justifyContent: "center", marginRight: 12 },
-  progressContent: { flex: 1 },
-  progressTitle: { color: "#FFFFFF", fontSize: 16, fontWeight: "800" },
-  progressSubtitle: { color: "#DCE3FF", fontSize: 12, marginTop: 4 },
-  pressed: { opacity: 0.75 },
+  container:{flex:1,backgroundColor:"#070A10"},content:{paddingHorizontal:16,paddingTop:52,paddingBottom:40},header:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",marginBottom:18},headerButton:{width:42,height:42,borderRadius:21,backgroundColor:"#11151D",alignItems:"center",justifyContent:"center"},headerTitle:{alignItems:"center"},title:{color:"#FFFFFF",fontSize:27,fontWeight:"900"},subtitle:{color:"#9B5CFF",fontSize:13,fontWeight:"700",marginTop:3},tabs:{height:48,flexDirection:"row",borderBottomWidth:1,borderBottomColor:"#222733",marginBottom:12},activeTab:{flex:1,alignItems:"center",justifyContent:"center",borderBottomWidth:2,borderBottomColor:"#9B5CFF"},tab:{flex:1,alignItems:"center",justifyContent:"center"},activeTabText:{color:"#B98BFF",fontSize:14,fontWeight:"800"},tabText:{color:"#7C8390",fontSize:14,fontWeight:"600"},imageCard:{backgroundColor:"#0E131B",borderRadius:22,borderWidth:1,borderColor:"#202632",overflow:"hidden"},imageTop:{position:"absolute",zIndex:2,left:14,right:14,top:14,flexDirection:"row",justifyContent:"space-between",alignItems:"center"},imageTitle:{color:"#FFFFFF",fontSize:17,fontWeight:"800"},fullscreen:{flexDirection:"row",gap:6,alignItems:"center",backgroundColor:"#111722",borderRadius:10,paddingHorizontal:10,paddingVertical:8},fullscreenText:{color:"#FFFFFF",fontSize:11,fontWeight:"700"},anatomyImage:{width:"100%",height:285,marginTop:22,backgroundColor:"#0B0F16"},imageCaption:{color:"#737B89",fontSize:10,padding:10,textAlign:"center"},infoCard:{marginTop:14,backgroundColor:"#10151E",borderRadius:20,borderWidth:1,borderColor:"#202632",padding:16,flexDirection:"row",gap:16},infoColumn:{flex:1},divider:{width:1,backgroundColor:"#252B36"},infoTitle:{color:"#A875FF",fontSize:11,fontWeight:"900",letterSpacing:1},infoText:{color:"#D5D9E0",fontSize:13,lineHeight:19,marginTop:8},bullet:{color:"#D5D9E0",fontSize:12,lineHeight:22},sectionTitle:{color:"#FFFFFF",fontSize:21,fontWeight:"900",marginTop:24},sectionSubtitle:{color:"#7F8795",fontSize:13,marginTop:4},partsCard:{marginTop:12,backgroundColor:"#10151E",borderRadius:20,borderWidth:1,borderColor:"#202632",overflow:"hidden"},partRow:{minHeight:92,padding:14,flexDirection:"row",alignItems:"center",borderBottomWidth:1,borderBottomColor:"#202632"},lastRow:{borderBottomWidth:0},partDot:{width:10,height:10,borderRadius:5,marginRight:12},partContent:{flex:1},partTitle:{color:"#FFFFFF",fontSize:14,fontWeight:"800"},partText:{color:"#89919E",fontSize:12,lineHeight:17,marginTop:5},exerciseList:{gap:10,paddingTop:12},exerciseCard:{width:158,backgroundColor:"#10151E",borderRadius:18,borderWidth:1,borderColor:"#202632",overflow:"hidden",paddingBottom:13},exerciseImage:{height:100,backgroundColor:"#151B25",alignItems:"center",justifyContent:"center"},exerciseName:{color:"#FFFFFF",fontSize:13,fontWeight:"800",paddingHorizontal:11,paddingTop:10},exerciseAccent:{color:"#8B93A1",fontSize:11,paddingHorizontal:11,paddingTop:4},tipCard:{marginTop:22,borderRadius:18,backgroundColor:"#17132A",borderWidth:1,borderColor:"#49317A",padding:16},tipTitle:{color:"#B889FF",fontSize:12,fontWeight:"900",letterSpacing:1},tipText:{color:"#D8D0E8",fontSize:13,lineHeight:19,marginTop:7},license:{color:"#565E6B",fontSize:9,lineHeight:13,marginTop:18}
 });
