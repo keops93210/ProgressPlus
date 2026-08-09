@@ -16,15 +16,31 @@ export default function ExerciseDetailScreen() {
   const [exercise, setExercise] = useState<Exercise | null>(null);
 
   useEffect(() => {
-    if (!params.id || params.name) return;
-    getExercises()
-      .then((items) => setExercise((items ?? []).find((item) => item.id === params.id) ?? null))
-      .catch(console.error);
-  }, [params.id, params.name]);
+    if (!params.id) return;
 
-  const name = params.name ?? exercise?.name ?? "Exercice";
-  const muscle = params.muscle ?? exercise?.primary_muscle;
-  const equipment = params.equipment ?? exercise?.equipment;
+    let cancelled = false;
+
+    getExercises()
+      .then((items) => {
+        if (cancelled) return;
+        setExercise((items ?? []).find((item) => item.id === params.id) ?? null);
+      })
+      .catch((error) => {
+        if (!cancelled) console.error(error);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [params.id]);
+
+  // Some callers historically passed the placeholder "Exercice".
+  // When an id exists, prefer the real database record so the anatomy logic
+  // receives the actual exercise name (incliné, couché, dips, etc.).
+  const hasRealParamName = Boolean(params.name && params.name.trim() && params.name.trim().toLowerCase() !== "exercice");
+  const name = exercise?.name ?? (hasRealParamName ? params.name! : "Exercice");
+  const muscle = exercise?.primary_muscle ?? params.muscle;
+  const equipment = exercise?.equipment ?? params.equipment;
   const guide = getExerciseGuide(name, muscle);
   const isPectoral = guide.primary === "chest" || /chest|pec|pectoral/i.test(muscle ?? "");
   const primaryLabel = isPectoral ? "Grand pectoral" : (muscle ?? guide.primary);
