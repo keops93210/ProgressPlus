@@ -4,12 +4,14 @@ import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
 import Card from "@/components/ui/Card";
 import Colors from "@/constants/colors";
+import { resolveExerciseImage } from "@/services/exercise-image.service";
 import { ProgramExercise } from "@/types/programExercise";
 
 interface Props { exercise: ProgramExercise; onDelete?: () => void; }
 
 export default function ExerciseCard({ exercise, onDelete }: Props) {
   const item = exercise.exercises;
+  const imageUri = resolveExerciseImage(item);
 
   return (
     <Card>
@@ -18,11 +20,15 @@ export default function ExerciseCard({ exercise, onDelete }: Props) {
         style={({ pressed }) => [styles.row, pressed && styles.pressed]}
       >
         <View style={styles.thumbnailWrap}>
-          {item.image_url ? <Image source={{ uri: item.image_url }} style={styles.thumbnail} resizeMode="cover" /> : <View style={styles.fallback}><Text style={styles.fallbackIcon}>💪</Text></View>}
+          {imageUri ? (
+            <Image source={{ uri: imageUri }} style={styles.thumbnail} resizeMode="contain" />
+          ) : (
+            <View style={styles.fallback}><Text style={styles.fallbackIcon}>＋</Text><Text style={styles.fallbackLabel}>Image</Text></View>
+          )}
         </View>
         <View style={styles.content}>
           <Text style={styles.name} numberOfLines={2}>{item.name}</Text>
-          <Text style={styles.muscle} numberOfLines={1}>💪 {item.primary_muscle}</Text>
+          <Text style={styles.muscle} numberOfLines={1}>{item.primary_muscle}</Text>
           <View style={styles.statsRow}>
             <View style={styles.statPill}><Text style={styles.statText}>{exercise.sets} séries</Text></View>
             <View style={styles.statPill}><Text style={styles.statText}>{exercise.min_reps}-{exercise.max_reps} reps</Text></View>
@@ -42,10 +48,11 @@ export default function ExerciseCard({ exercise, onDelete }: Props) {
 const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center" },
   pressed: { opacity: 0.72 },
-  thumbnailWrap: { width: 78, height: 78, borderRadius: 15, overflow: "hidden", backgroundColor: Colors.surfaceLight, borderWidth: 1, borderColor: Colors.border },
+  thumbnailWrap: { width: 82, height: 82, borderRadius: 16, overflow: "hidden", backgroundColor: "#FAFAFC", borderWidth: 1, borderColor: Colors.border },
   thumbnail: { width: "100%", height: "100%" },
   fallback: { flex: 1, alignItems: "center", justifyContent: "center" },
-  fallbackIcon: { fontSize: 28 },
+  fallbackIcon: { fontSize: 28, lineHeight: 28, color: Colors.primary, fontWeight: "900" },
+  fallbackLabel: { color: Colors.textMuted, fontSize: 9, fontWeight: "800", marginTop: 2 },
   content: { flex: 1, minWidth: 0, marginLeft: 13, marginRight: 8 },
   name: { color: Colors.text, fontSize: 17, lineHeight: 21, fontWeight: "900" },
   muscle: { color: Colors.primary, marginTop: 4, fontSize: 12, fontWeight: "800" },
