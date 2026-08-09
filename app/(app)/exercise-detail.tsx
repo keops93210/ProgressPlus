@@ -1,14 +1,13 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { ArrowLeft, Dumbbell, Flame, Lightbulb, Play, Target, TriangleAlert, Maximize2 } from "lucide-react-native";
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useEffect, useState } from "react";
 
+import ExerciseAnatomyArt from "@/components/exercise/ExerciseAnatomyArt";
 import Colors from "@/constants/colors";
 import { getExercises } from "@/services/exercise.service";
 import { Exercise } from "@/types/exercise";
-
-const pectoralAnatomyImage = "https://commons.wikimedia.org/wiki/Special:Redirect/file/Pectoralis-major.png";
 
 export default function ExerciseDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -42,6 +41,7 @@ export default function ExerciseDetailScreen() {
     .filter(Boolean)
     .slice(0, 4);
   const isPectoral = /chest|pec|pectoral|pectoraux/i.test(exercise.primary_muscle ?? "");
+  const primaryLabel = isPectoral ? "Grand pectoral" : exercise.primary_muscle;
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -77,23 +77,16 @@ export default function ExerciseDetailScreen() {
           </View>
 
           <View style={styles.anatomyImageFrame}>
-            {isPectoral ? (
-              <Image source={{ uri: pectoralAnatomyImage }} style={styles.anatomyImage} resizeMode="contain" />
-            ) : exercise.image_url ? (
-              <Image source={{ uri: exercise.image_url }} style={styles.anatomyImage} resizeMode="contain" />
-            ) : (
-              <View style={styles.anatomyFallback}>
-                <Dumbbell size={42} color={Colors.primary} />
-                <Text style={styles.fallbackTitle}>Anatomie à venir</Text>
-                <Text style={styles.fallbackHint}>Une illustration anatomique dédiée sera ajoutée pour ce groupe musculaire.</Text>
-              </View>
-            )}
-            {isPectoral && (
-              <View style={styles.anatomyBadge}>
-                <View style={styles.badgeDot} />
-                <Text style={styles.anatomyBadgeText}>Grand pectoral</Text>
-              </View>
-            )}
+            <ExerciseAnatomyArt
+              name={exercise.name}
+              primaryMuscle={exercise.primary_muscle}
+              secondaryMuscles={exercise.secondary_muscles}
+              equipment={exercise.equipment}
+            />
+            <View style={styles.anatomyBadge}>
+              <View style={styles.badgeDot} />
+              <Text style={styles.anatomyBadgeText}>{primaryLabel}</Text>
+            </View>
             <Pressable style={styles.fullscreenButton}>
               <Maximize2 size={16} color="#FFFFFF" />
             </Pressable>
@@ -102,7 +95,7 @@ export default function ExerciseDetailScreen() {
           <View style={styles.muscleSummary}>
             <View style={styles.summaryBlock}>
               <Text style={styles.summaryLabel}>MUSCLE PRINCIPAL</Text>
-              <Text style={styles.summaryValue}>{isPectoral ? "Grand pectoral" : exercise.primary_muscle}</Text>
+              <Text style={styles.summaryValue}>{primaryLabel}</Text>
             </View>
             <View style={styles.summaryDivider} />
             <View style={styles.summaryBlock}>
@@ -121,7 +114,7 @@ export default function ExerciseDetailScreen() {
 
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Muscles sollicités</Text>
-          <View style={styles.mainMuscle}><Text style={styles.mainMuscleText}>Principal · {isPectoral ? "Grand pectoral" : exercise.primary_muscle}</Text></View>
+          <View style={styles.mainMuscle}><Text style={styles.mainMuscleText}>Principal · {primaryLabel}</Text></View>
           {secondary.length > 0 && (
             <View style={styles.chips}>
               {secondary.slice(0, 5).map((muscle) => (
@@ -201,14 +194,10 @@ const styles = StyleSheet.create({
   anatomyInfo: { width: 38, height: 38, borderRadius: 13, backgroundColor: Colors.surfaceLight, alignItems: "center", justifyContent: "center" },
   anatomyInfoText: { color: Colors.primary, fontSize: 21, fontWeight: "900" },
   anatomyImageFrame: { marginHorizontal: 14, height: 360, borderRadius: 20, backgroundColor: "#FAFAFC", borderWidth: 1, borderColor: Colors.border, overflow: "hidden", position: "relative" },
-  anatomyImage: { width: "100%", height: "100%" },
   anatomyBadge: { position: "absolute", left: 12, bottom: 12, flexDirection: "row", alignItems: "center", backgroundColor: "rgba(255,255,255,0.95)", borderRadius: 14, paddingHorizontal: 11, paddingVertical: 8, borderWidth: 1, borderColor: Colors.border },
   badgeDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: Colors.primary, marginRight: 7 },
   anatomyBadgeText: { color: Colors.primary, fontSize: 12, fontWeight: "900" },
   fullscreenButton: { position: "absolute", right: 12, top: 12, width: 38, height: 38, borderRadius: 12, backgroundColor: "rgba(25,25,35,0.82)", alignItems: "center", justifyContent: "center" },
-  anatomyFallback: { flex: 1, alignItems: "center", justifyContent: "center", padding: 30 },
-  fallbackTitle: { color: Colors.text, fontSize: 17, fontWeight: "900", marginTop: 12 },
-  fallbackHint: { color: Colors.textSecondary, fontSize: 12, lineHeight: 18, textAlign: "center", marginTop: 7 },
   muscleSummary: { marginTop: 14, borderTopWidth: 1, borderTopColor: Colors.border, padding: 16, flexDirection: "row", gap: 14 },
   summaryBlock: { flex: 1 },
   summaryDivider: { width: 1, backgroundColor: Colors.border },
