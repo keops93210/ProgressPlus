@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { ArrowLeft, Dumbbell, Flame, Lightbulb, Play, Target, TriangleAlert } from "lucide-react-native";
+import { ArrowLeft, Dumbbell, Flame, Lightbulb, Play, Target, TriangleAlert, Maximize2 } from "lucide-react-native";
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useEffect, useState } from "react";
@@ -7,6 +7,8 @@ import { useEffect, useState } from "react";
 import Colors from "@/constants/colors";
 import { getExercises } from "@/services/exercise.service";
 import { Exercise } from "@/types/exercise";
+
+const pectoralAnatomyImage = "https://commons.wikimedia.org/wiki/Special:Redirect/file/Pectoralis-major.png";
 
 export default function ExerciseDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -39,6 +41,7 @@ export default function ExerciseDetailScreen() {
     .map((item) => item.trim())
     .filter(Boolean)
     .slice(0, 4);
+  const isPectoral = /chest|pec|pectoral|pectoraux/i.test(exercise.primary_muscle ?? "");
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -64,37 +67,48 @@ export default function ExerciseDetailScreen() {
           <Text style={styles.tabText}>Conseils</Text>
         </View>
 
-        <View style={styles.heroCard}>
-          <View style={styles.heroCopy}>
-            <Text style={styles.eyebrow}>MUSCLE PRINCIPAL</Text>
-            <Text style={styles.heroTitle}>{exercise.primary_muscle}</Text>
-            <View style={styles.pill}><Text style={styles.pillText}>Zone ciblée</Text></View>
-            <Text style={styles.heroDescription}>
-              Travaille principalement {exercise.primary_muscle.toLowerCase()}, avec une sollicitation des muscles secondaires.
-            </Text>
-            {secondary.length > 0 && (
-              <>
-                <Text style={styles.eyebrowSecondary}>MUSCLES SECONDAIRES</Text>
-                {secondary.slice(0, 3).map((muscle) => (
-                  <Text key={muscle} style={styles.secondary}>•  {muscle}</Text>
-                ))}
-              </>
-            )}
+        <View style={styles.anatomyCard}>
+          <View style={styles.anatomyHeader}>
+            <View>
+              <Text style={styles.anatomyKicker}>ZONE TRAVAILLÉE</Text>
+              <Text style={styles.anatomyTitle}>Anatomie du muscle sollicité</Text>
+            </View>
+            <View style={styles.anatomyInfo}><Text style={styles.anatomyInfoText}>i</Text></View>
           </View>
 
-          <View style={styles.anatomyPanel}>
-            {exercise.image_url ? (
-              <Image source={{ uri: exercise.image_url }} style={styles.heroImage} resizeMode="cover" />
+          <View style={styles.anatomyImageFrame}>
+            {isPectoral ? (
+              <Image source={{ uri: pectoralAnatomyImage }} style={styles.anatomyImage} resizeMode="contain" />
+            ) : exercise.image_url ? (
+              <Image source={{ uri: exercise.image_url }} style={styles.anatomyImage} resizeMode="contain" />
             ) : (
               <View style={styles.anatomyFallback}>
-                <View style={styles.fallbackIcon}>
-                  <Dumbbell size={34} color={Colors.primary} strokeWidth={2.2} />
-                </View>
-                <Text style={styles.fallbackTitle}>Zone travaillée</Text>
-                <Text style={styles.fallbackMuscle}>{exercise.primary_muscle}</Text>
-                <Text style={styles.fallbackHint}>Illustration disponible dès qu'elle est renseignée pour cet exercice.</Text>
+                <Dumbbell size={42} color={Colors.primary} />
+                <Text style={styles.fallbackTitle}>Anatomie à venir</Text>
+                <Text style={styles.fallbackHint}>Une illustration anatomique dédiée sera ajoutée pour ce groupe musculaire.</Text>
               </View>
             )}
+            {isPectoral && (
+              <View style={styles.anatomyBadge}>
+                <View style={styles.badgeDot} />
+                <Text style={styles.anatomyBadgeText}>Grand pectoral</Text>
+              </View>
+            )}
+            <Pressable style={styles.fullscreenButton}>
+              <Maximize2 size={16} color="#FFFFFF" />
+            </Pressable>
+          </View>
+
+          <View style={styles.muscleSummary}>
+            <View style={styles.summaryBlock}>
+              <Text style={styles.summaryLabel}>MUSCLE PRINCIPAL</Text>
+              <Text style={styles.summaryValue}>{isPectoral ? "Grand pectoral" : exercise.primary_muscle}</Text>
+            </View>
+            <View style={styles.summaryDivider} />
+            <View style={styles.summaryBlock}>
+              <Text style={styles.summaryLabel}>MUSCLES SECONDAIRES</Text>
+              <Text style={styles.summarySecondary}>{secondary.length ? secondary.slice(0, 3).join(" • ") : "—"}</Text>
+            </View>
           </View>
         </View>
 
@@ -107,7 +121,7 @@ export default function ExerciseDetailScreen() {
 
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Muscles sollicités</Text>
-          <View style={styles.mainMuscle}><Text style={styles.mainMuscleText}>Principal · {exercise.primary_muscle}</Text></View>
+          <View style={styles.mainMuscle}><Text style={styles.mainMuscleText}>Principal · {isPectoral ? "Grand pectoral" : exercise.primary_muscle}</Text></View>
           {secondary.length > 0 && (
             <View style={styles.chips}>
               {secondary.slice(0, 5).map((muscle) => (
@@ -180,22 +194,27 @@ const styles = StyleSheet.create({
   activeTab: { borderBottomWidth: 3, borderBottomColor: Colors.primary, paddingHorizontal: 16, paddingBottom: 11 },
   activeTabText: { color: Colors.primary, fontSize: 14, fontWeight: "900" },
   tabText: { color: Colors.textSecondary, fontSize: 14, fontWeight: "600", paddingBottom: 12 },
-  heroCard: { margin: 16, borderRadius: 22, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.surfaceLight, padding: 18, flexDirection: "row", minHeight: 300 },
-  heroCopy: { flex: 1.1, paddingRight: 10 },
-  eyebrow: { color: Colors.primary, fontSize: 11, fontWeight: "900", letterSpacing: 1.1, marginBottom: 5 },
-  heroTitle: { color: Colors.text, fontSize: 26, fontWeight: "900" },
-  pill: { alignSelf: "flex-start", backgroundColor: "#EDE5FF", borderRadius: 999, paddingHorizontal: 11, paddingVertical: 6, marginTop: 8 },
-  pillText: { color: Colors.primary, fontWeight: "800", fontSize: 11 },
-  heroDescription: { color: Colors.textSecondary, fontSize: 14, lineHeight: 20, marginTop: 12 },
-  eyebrowSecondary: { color: Colors.primary, fontSize: 10, fontWeight: "900", marginTop: 15, marginBottom: 6 },
-  secondary: { color: Colors.text, fontSize: 13, lineHeight: 22 },
-  anatomyPanel: { width: 142, minHeight: 240, borderRadius: 18, overflow: "hidden", backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: Colors.border },
-  heroImage: { width: "100%", height: "100%" },
-  anatomyFallback: { flex: 1, padding: 14, alignItems: "center", justifyContent: "center" },
-  fallbackIcon: { width: 62, height: 62, borderRadius: 31, backgroundColor: Colors.surfaceLight, alignItems: "center", justifyContent: "center" },
-  fallbackTitle: { color: Colors.textSecondary, fontSize: 11, fontWeight: "800", marginTop: 12 },
-  fallbackMuscle: { color: Colors.primary, fontSize: 17, fontWeight: "900", textAlign: "center", marginTop: 3 },
-  fallbackHint: { color: Colors.textMuted, fontSize: 9, lineHeight: 13, textAlign: "center", marginTop: 8 },
+  anatomyCard: { margin: 16, borderRadius: 24, borderWidth: 1, borderColor: Colors.border, backgroundColor: "#FFFFFF", overflow: "hidden" },
+  anatomyHeader: { paddingHorizontal: 18, paddingTop: 18, paddingBottom: 14, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  anatomyKicker: { color: Colors.primary, fontSize: 11, fontWeight: "900", letterSpacing: 1.2 },
+  anatomyTitle: { color: Colors.text, fontSize: 21, fontWeight: "900", marginTop: 4 },
+  anatomyInfo: { width: 38, height: 38, borderRadius: 13, backgroundColor: Colors.surfaceLight, alignItems: "center", justifyContent: "center" },
+  anatomyInfoText: { color: Colors.primary, fontSize: 21, fontWeight: "900" },
+  anatomyImageFrame: { marginHorizontal: 14, height: 360, borderRadius: 20, backgroundColor: "#FAFAFC", borderWidth: 1, borderColor: Colors.border, overflow: "hidden", position: "relative" },
+  anatomyImage: { width: "100%", height: "100%" },
+  anatomyBadge: { position: "absolute", left: 12, bottom: 12, flexDirection: "row", alignItems: "center", backgroundColor: "rgba(255,255,255,0.95)", borderRadius: 14, paddingHorizontal: 11, paddingVertical: 8, borderWidth: 1, borderColor: Colors.border },
+  badgeDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: Colors.primary, marginRight: 7 },
+  anatomyBadgeText: { color: Colors.primary, fontSize: 12, fontWeight: "900" },
+  fullscreenButton: { position: "absolute", right: 12, top: 12, width: 38, height: 38, borderRadius: 12, backgroundColor: "rgba(25,25,35,0.82)", alignItems: "center", justifyContent: "center" },
+  anatomyFallback: { flex: 1, alignItems: "center", justifyContent: "center", padding: 30 },
+  fallbackTitle: { color: Colors.text, fontSize: 17, fontWeight: "900", marginTop: 12 },
+  fallbackHint: { color: Colors.textSecondary, fontSize: 12, lineHeight: 18, textAlign: "center", marginTop: 7 },
+  muscleSummary: { marginTop: 14, borderTopWidth: 1, borderTopColor: Colors.border, padding: 16, flexDirection: "row", gap: 14 },
+  summaryBlock: { flex: 1 },
+  summaryDivider: { width: 1, backgroundColor: Colors.border },
+  summaryLabel: { color: Colors.primary, fontSize: 10, fontWeight: "900", letterSpacing: 1 },
+  summaryValue: { color: Colors.text, fontSize: 17, fontWeight: "900", marginTop: 5 },
+  summarySecondary: { color: Colors.textSecondary, fontSize: 13, lineHeight: 19, marginTop: 5 },
   metaGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, paddingHorizontal: 16, marginBottom: 16 },
   meta: { width: "47.5%", minHeight: 76, borderRadius: 16, borderWidth: 1, borderColor: Colors.border, backgroundColor: "#FFFFFF", padding: 11 },
   metaLabel: { color: Colors.textMuted, fontSize: 11, marginTop: 5 },
