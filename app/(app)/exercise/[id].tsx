@@ -2,18 +2,32 @@ import { router, useLocalSearchParams } from "expo-router";
 import { ArrowLeft, CheckCircle2, Dumbbell, TriangleAlert } from "lucide-react-native";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useEffect, useState } from "react";
 
 import PectoralAnatomyCard from "@/components/exercise/PectoralAnatomyCard";
 import AnatomyFigure from "@/components/exercise/AnatomyFigure";
 import Colors from "@/constants/colors";
 import { getExerciseGuide } from "@/data/exercise-guides";
+import { getExercises } from "@/services/exercise.service";
+import { Exercise } from "@/types/exercise";
 
 export default function ExerciseDetailScreen() {
   const params = useLocalSearchParams<{ id: string; name?: string; muscle?: string; equipment?: string }>();
-  const name = params.name ?? "Exercice";
-  const guide = getExerciseGuide(name, params.muscle);
-  const isPectoral = guide.primary === "chest" || /chest|pec|pectoral/i.test(params.muscle ?? "");
-  const primaryLabel = isPectoral ? "Grand pectoral" : (params.muscle ?? guide.primary);
+  const [exercise, setExercise] = useState<Exercise | null>(null);
+
+  useEffect(() => {
+    if (!params.id || params.name) return;
+    getExercises()
+      .then((items) => setExercise((items ?? []).find((item) => item.id === params.id) ?? null))
+      .catch(console.error);
+  }, [params.id, params.name]);
+
+  const name = params.name ?? exercise?.name ?? "Exercice";
+  const muscle = params.muscle ?? exercise?.primary_muscle;
+  const equipment = params.equipment ?? exercise?.equipment;
+  const guide = getExerciseGuide(name, muscle);
+  const isPectoral = guide.primary === "chest" || /chest|pec|pectoral/i.test(muscle ?? "");
+  const primaryLabel = isPectoral ? "Grand pectoral" : (muscle ?? guide.primary);
   const secondary = isPectoral && guide.secondary.length === 0 ? ["Deltoïde antérieur", "Triceps"] : guide.secondary;
 
   return (
@@ -33,7 +47,7 @@ export default function ExerciseDetailScreen() {
           <Text style={styles.intro}>{guide.intro}</Text>
           <View style={styles.metaRow}>
             <View style={styles.meta}><Text style={styles.metaText}>Muscle principal</Text><Text style={styles.metaValue}>{primaryLabel}</Text></View>
-            {params.equipment ? <View style={styles.meta}><Text style={styles.metaText}>Équipement</Text><Text style={styles.metaValue}>{params.equipment}</Text></View> : null}
+            {equipment ? <View style={styles.meta}><Text style={styles.metaText}>Équipement</Text><Text style={styles.metaValue}>{equipment}</Text></View> : null}
           </View>
         </View>
 
