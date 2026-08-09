@@ -17,11 +17,7 @@ const DEFAULT_SETTINGS: RestFeedbackSettings = {
 };
 
 export async function getRestFeedbackSettings(): Promise<RestFeedbackSettings> {
-  const [sound, vibration] = await Promise.all([
-    AsyncStorage.getItem(SOUND_KEY),
-    AsyncStorage.getItem(VIBRATION_KEY),
-  ]);
-
+  const [sound, vibration] = await Promise.all([AsyncStorage.getItem(SOUND_KEY), AsyncStorage.getItem(VIBRATION_KEY)]);
   return {
     soundEnabled: sound === null ? DEFAULT_SETTINGS.soundEnabled : sound === "true",
     vibrationEnabled: vibration === null ? DEFAULT_SETTINGS.vibrationEnabled : vibration === "true",
@@ -44,30 +40,11 @@ export async function requestRestSoundPermission() {
 }
 
 export async function triggerRestFinishedFeedback(settings: RestFeedbackSettings) {
-  if (settings.vibrationEnabled) {
-    Vibration.vibrate([0, 180, 80, 180]);
-    try {
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch {
-      // Some devices may not expose the haptic engine.
-    }
-  }
-
-  if (settings.soundEnabled) {
-    try {
-      const permissionGranted = await requestRestSoundPermission();
-      if (permissionGranted) {
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: "Repos terminé 💪",
-            body: "C'est reparti pour ta prochaine série.",
-            sound: "default",
-          },
-          trigger: null,
-        });
-      }
-    } catch (error) {
-      console.log("REST SOUND ERROR =", error);
-    }
+  if (!settings.vibrationEnabled) return;
+  Vibration.vibrate([0, 180, 80, 180]);
+  try {
+    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  } catch {
+    // Some devices may not expose the haptic engine.
   }
 }
