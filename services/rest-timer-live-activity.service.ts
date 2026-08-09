@@ -3,7 +3,7 @@ import type { LiveActivity } from "expo-widgets";
 import RestTimerActivity from "@/components/workout/RestTimerActivity";
 
 export type RestTimerLiveActivityProps = {
-  remaining: number;
+  endAt: number;
   duration: number;
 };
 
@@ -61,7 +61,7 @@ export async function endRestTimerLiveActivity(): Promise<void> {
   if (!activity) return;
 
   try {
-    await activity.end("immediate", { remaining: 0, duration: 0 }, new Date());
+    await activity.end("immediate", { endAt: 0, duration: 0 }, new Date());
   } catch (error) {
     console.log("REST LIVE ACTIVITY END ERROR =", error);
   }
