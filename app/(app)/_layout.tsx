@@ -47,6 +47,7 @@ export default function AppLayout() {
         <Tabs.Screen name="exercise-detail" options={{ href: null }} />
         <Tabs.Screen name="muscle-library" options={{ href: null }} />
         <Tabs.Screen name="community-programs" options={{ href: null }} />
+        <Tabs.Screen name="settings" options={{ href: null }} />
       </Tabs>
       <GlobalRestTimer />
     </>
