@@ -29,18 +29,21 @@ export default function CoachNextSetCard({
   const recoveryLow = typeof recoveryScore === "number" && recoveryScore <= 2;
   const recoveryHigh = typeof recoveryScore === "number" && recoveryScore >= 4.2;
 
-  const nextWeight = recoveryLow
-    ? weight
-    : isAboveTarget && recoveryHigh
-      ? weight + 2.5
-      : weight;
-  const nextReps = recoveryLow
-    ? Math.min(maxReps, Math.max(minReps, reps))
-    : isAboveTarget && recoveryHigh
+  const shouldIncreaseWeight = isAboveTarget && recoveryHigh && weight > 0;
+  const shouldConsolidate = recoveryLow || isBelowTarget;
+
+  const nextWeight = shouldIncreaseWeight ? weight + 2.5 : weight;
+  const nextReps = shouldConsolidate
+    ? Math.min(maxReps, Math.max(minReps, isBelowTarget ? minReps : reps))
+    : shouldIncreaseWeight
       ? minReps
-      : isBelowTarget
-        ? minReps
-        : Math.min(maxReps, reps + 1);
+      : Math.min(maxReps, reps + 1);
+
+  const decision = shouldIncreaseWeight
+    ? "MONTER"
+    : shouldConsolidate
+      ? "CONSOLIDER"
+      : "MAINTENIR";
 
   const title = recoveryLow
     ? "On consolide aujourd'hui."
@@ -75,7 +78,12 @@ export default function CoachNextSetCard({
           )}
           <Text style={styles.eyebrow}>COACH PROGRESS+</Text>
         </View>
-        <Text style={styles.setLabel}>{nextSet <= totalSets ? `SÉRIE ${nextSet}` : "DERNIÈRE SÉRIE"}</Text>
+        <View style={styles.headerRight}>
+          <View style={[styles.decisionBadge, shouldIncreaseWeight && styles.decisionBadgePrimary]}>
+            <Text style={[styles.decisionText, shouldIncreaseWeight && styles.decisionTextPrimary]}>{decision}</Text>
+          </View>
+          <Text style={styles.setLabel}>{nextSet <= totalSets ? `SÉRIE ${nextSet}` : "DERNIÈRE SÉRIE"}</Text>
+        </View>
       </View>
 
       <Text style={styles.title}>{title}</Text>
@@ -124,6 +132,11 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   titleRow: { flexDirection: "row", alignItems: "center", gap: 7 },
   eyebrow: { color: Colors.primary, fontSize: 10, fontWeight: "900", letterSpacing: 1.2 },
+  headerRight: { flexDirection: "row", alignItems: "center", gap: 7 },
+  decisionBadge: { paddingHorizontal: 7, paddingVertical: 4, borderRadius: 999, backgroundColor: Colors.background, borderWidth: 1, borderColor: Colors.border },
+  decisionBadgePrimary: { backgroundColor: Colors.primary + "18", borderColor: Colors.primary + "45" },
+  decisionText: { color: Colors.textSecondary, fontSize: 8, fontWeight: "900", letterSpacing: 0.6 },
+  decisionTextPrimary: { color: Colors.primary },
   setLabel: { color: Colors.textSecondary, fontSize: 10, fontWeight: "800", letterSpacing: 0.8 },
   title: { color: Colors.text, fontSize: 17, fontWeight: "900", marginTop: 12 },
   message: { color: Colors.textSecondary, fontSize: 13, lineHeight: 19, marginTop: 6 },
