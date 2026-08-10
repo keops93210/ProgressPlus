@@ -148,6 +148,7 @@ export async function getProgressionRecommendation(userId: string | null, exerci
   const trendSuffix = trend === "up" ? ` Ta force estimée monte de ${Math.abs(trendPercent)}%.` : trend === "down" ? ` Ta force estimée baisse de ${Math.abs(trendPercent)}% : on consolide plutôt que de forcer.` : " Ta force estimée est stable : on cherche une petite progression propre.";
   const recoverySuffix = readinessMessage(readinessScore);
   const lowReadiness = readinessScore !== null && readinessScore <= 2;
+  const conservativeMode = lowReadiness || trend === "down";
 
   if (allAtTop && currentWeight > 0 && trend !== "down" && !lowReadiness) {
     const recommendedWeight = currentWeight + 2.5;
@@ -156,6 +157,16 @@ export async function getProgressionRecommendation(userId: string | null, exerci
 
   if (currentWeight > 0 && weakestReps < minReps) {
     return { action: "keep_weight", currentWeight, recommendedWeight: currentWeight, currentReps: Math.round(averageReps), recommendedReps: minReps, minReps, maxReps, completedSets: sets.length, trend, trendPercent, readinessScore, message: `La série la plus faible est sous ${minReps} reps. Garde ${currentWeight} kg jusqu'à stabiliser toutes tes séries.${trendSuffix}${recoverySuffix}` };
+  }
+
+  if (conservativeMode && currentWeight > 0) {
+    const recommendedReps = Math.min(maxReps, Math.max(minReps, Math.round(averageReps)));
+    const reason = lowReadiness && trend === "down"
+      ? "Ta récupération est basse et ta tendance récente est en baisse."
+      : lowReadiness
+        ? "Ta récupération est basse aujourd'hui."
+        : "Ta tendance récente est en baisse.";
+    return { action: "keep_weight", currentWeight, recommendedWeight: currentWeight, currentReps: Math.round(averageReps), recommendedReps, minReps, maxReps, completedSets: sets.length, trend, trendPercent, readinessScore, message: `${reason} On garde ${currentWeight} kg et on consolide ${recommendedReps} reps avant toute surcharge.${trendSuffix}${recoverySuffix}` };
   }
 
   if (currentWeight > 0 && topSetRatio >= 0.75 && consistency >= 0.75) {
