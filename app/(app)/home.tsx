@@ -38,6 +38,56 @@ function formatVolume(value: number) {
   return `${Math.round(value).toLocaleString("fr-FR")} kg`;
 }
 
+function getCoachDecision(recoveryScore: number | null | undefined, hasProgram: boolean) {
+  if (!hasProgram) {
+    return {
+      eyebrow: "PREMIÈRE ÉTAPE",
+      title: "Construis ton programme",
+      message: "Ajoute tes exercices et Progress+ pourra commencer à piloter ta progression série par série.",
+      action: "Voir mes programmes",
+      tone: "neutral" as const,
+    };
+  }
+
+  if (recoveryScore == null) {
+    return {
+      eyebrow: "COACH PROGRESS+",
+      title: "Prêt à décider avec tes données",
+      message: "Fais ton check-in au début de ta prochaine séance : Progress+ adaptera ensuite l'intensité à ton état du jour.",
+      action: "Commencer la séance",
+      tone: "neutral" as const,
+    };
+  }
+
+  if (recoveryScore <= 2) {
+    return {
+      eyebrow: "COACH PROGRESS+",
+      title: "Aujourd'hui, on consolide",
+      message: "Ta récupération est basse. Pas de surcharge : priorité à une exécution propre et à la maîtrise de tes séries.",
+      action: "Ouvrir ma séance",
+      tone: "caution" as const,
+    };
+  }
+
+  if (recoveryScore >= 4.2) {
+    return {
+      eyebrow: "COACH PROGRESS+",
+      title: "Feu vert pour progresser",
+      message: "Ta récupération est très bonne. Si ta technique reste solide, Progress+ cherchera une progression contrôlée.",
+      action: "Lancer ma séance",
+      tone: "ready" as const,
+    };
+  }
+
+  return {
+    eyebrow: "COACH PROGRESS+",
+    title: "Progression propre aujourd'hui",
+    message: "Ta récupération est correcte. On cherche une petite amélioration sans sacrifier la technique.",
+    action: "Lancer ma séance",
+    tone: "neutral" as const,
+  };
+}
+
 export default function HomeScreen() {
   const { user } = useAuth();
   const [data, setData] = useState<Awaited<ReturnType<typeof getHomeData>> | null>(null);
@@ -88,6 +138,7 @@ export default function HomeScreen() {
   const record = data?.records?.[0];
   const volumeChange = data?.volumeChange ?? 0;
   const hasComparison = Boolean(data?.history?.length && data?.monthVolume);
+  const coachDecision = getCoachDecision(recovery?.recovery_score, Boolean(program));
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -126,6 +177,21 @@ export default function HomeScreen() {
               {rankProgress?.next ? `${rankProgress.pointsToNext} pts avant ${rankProgress.next.name}` : "Rang maximum atteint"}
             </Text>
             <Text style={styles.levelSmall}>{Math.round((rankProgress?.percent ?? 0) * 100)}%</Text>
+          </View>
+        </TouchableOpacity>
+
+        <SectionHeader title="Coach Progress+" />
+        <TouchableOpacity
+          style={[styles.coachCard, coachDecision.tone === "ready" && styles.coachCardReady, coachDecision.tone === "caution" && styles.coachCardCaution]}
+          activeOpacity={0.9}
+          onPress={() => program && router.push({ pathname: "/(app)/program/[id]", params: { id: program.id } })}
+        >
+          <View style={styles.coachIcon}><Sparkles color={Colors.primary} size={22} /></View>
+          <View style={styles.coachContent}>
+            <Text style={styles.coachEyebrow}>{coachDecision.eyebrow}</Text>
+            <Text style={styles.coachTitle}>{coachDecision.title}</Text>
+            <Text style={styles.coachMessage}>{coachDecision.message}</Text>
+            <View style={styles.coachAction}><Text style={styles.coachActionText}>{coachDecision.action}</Text><ChevronRight color={Colors.primary} size={16} /></View>
           </View>
         </TouchableOpacity>
 
@@ -239,6 +305,16 @@ const styles = StyleSheet.create({
   sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 5 },
   sectionTitle: { color: Colors.text, fontSize: 17, fontWeight: "800" },
   sectionAction: { color: Colors.primary, fontSize: 12, fontWeight: "800" },
+  coachCard: { backgroundColor: Colors.surface, borderRadius: 20, padding: 16, borderWidth: 1, borderColor: Colors.primary, flexDirection: "row", alignItems: "flex-start" },
+  coachCardReady: { borderColor: Colors.primary },
+  coachCardCaution: { borderColor: Colors.border },
+  coachIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: Colors.background, alignItems: "center", justifyContent: "center" },
+  coachContent: { flex: 1, marginLeft: 12 },
+  coachEyebrow: { color: Colors.primary, fontSize: 10, fontWeight: "900", letterSpacing: 1.2 },
+  coachTitle: { color: Colors.text, fontSize: 18, fontWeight: "900", marginTop: 3 },
+  coachMessage: { color: Colors.textSecondary, fontSize: 12, lineHeight: 18, marginTop: 5 },
+  coachAction: { flexDirection: "row", alignItems: "center", marginTop: 10, gap: 2 },
+  coachActionText: { color: Colors.primary, fontSize: 12, fontWeight: "900" },
   workoutCard: { backgroundColor: Colors.surface, borderRadius: 20, padding: 16, borderWidth: 1, borderColor: Colors.primary, flexDirection: "row", alignItems: "center" },
   workoutIcon: { width: 54, height: 54, borderRadius: 16, backgroundColor: Colors.background, alignItems: "center", justifyContent: "center" },
   workoutInfo: { flex: 1, marginLeft: 13, marginRight: 8 },
@@ -275,4 +351,3 @@ const styles = StyleSheet.create({
   emptyRecord: { backgroundColor: Colors.surface, borderRadius: 18, padding: 16, borderWidth: 1, borderColor: Colors.border, flexDirection: "row", alignItems: "center", gap: 12 },
   emptyRecordText: { color: Colors.textSecondary, flex: 1, fontSize: 13, lineHeight: 18 },
 });
-
