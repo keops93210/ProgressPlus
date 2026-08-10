@@ -16,6 +16,7 @@ import { awardWorkoutPoints } from "@/services/ranking.service";
 import { getWorkoutSummary, WorkoutSummary } from "@/services/workout-summary.service";
 import { useRestTimerStore } from "@/stores/rest-timer.store";
 import { saveWorkoutEffort } from "@/services/workout-effort.service";
+import { getLiveSetDecision } from "@/services/progress-engine.service";
 import { finishWorkoutSession, getLastPerformance, getProgressionRecommendation, getWorkoutExercises, getWorkoutSession, saveWorkoutSet, startWorkoutSession, ProgressionRecommendation } from "@/services/workout-session.service";
 import { ProgramExercise } from "@/types/programExercise";
 import { router, useLocalSearchParams } from "expo-router";
@@ -23,7 +24,7 @@ import { useEffect, useState } from "react";
 import { Alert, AppState, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-type CoachLastSet = { weight: number; reps: number; nextSet: number; isPersonalRecord: boolean; rir: number };
+type CoachLastSet = { weight: number; reps: number; nextSet: number; isPersonalRecord: boolean; rir: number; suggestedRestSeconds: number; qualityScore: number };
 
 export default function WorkoutSessionScreen() {
   const { programId } = useLocalSearchParams<{ programId: string }>();
@@ -190,21 +191,6 @@ export default function WorkoutSessionScreen() {
     return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
   }
 
-  function getNextSetTarget(completedWeight: number, completedReps: number, completedRir: number) {
-    if (!exercise) return { weight: completedWeight, reps: completedReps };
-    const min = exercise.min_reps;
-    const max = exercise.max_reps;
-    const highRecovery = recoveryScore !== null && recoveryScore >= 4.2;
-    const veryEasy = completedRir >= 4;
-    const nearFailure = completedRir <= 1;
-    if (nearFailure) return { weight: completedWeight, reps: Math.max(min, Math.min(max, completedReps)) };
-    if (completedReps < min) return { weight: completedWeight, reps: min };
-    if (completedReps >= max && highRecovery && veryEasy && completedWeight > 0) return { weight: completedWeight + 2.5, reps: min };
-    if (completedReps >= max && veryEasy && completedWeight > 0) return { weight: completedWeight + 2.5, reps: min };
-    if (completedReps >= min) return { weight: completedWeight, reps: Math.min(max, completedReps + 1) };
-    return { weight: completedWeight, reps: Math.max(min, completedReps) };
-  }
-
   async function validateSet() {
     if (!exercise || !sessionId || saving || restActive) return;
     if (weight <= 0 || reps <= 0) {
@@ -215,6 +201,19 @@ export default function WorkoutSessionScreen() {
       setSaving(true);
       const savedSet = await saveWorkoutSet(sessionId, exercise.exercise_id, currentSet, weight, reps);
       await saveWorkoutEffort(sessionId, exercise.exercise_id, currentSet, rir);
+      const liveDecision = getLiveSetDecision({
+        setNumber: currentSet,
+        plannedSets: exercise.sets,
+        completedSets: completedTotalSets,
+        weight,
+        reps,
+        rir,
+        minReps: exercise.min_reps,
+        maxReps: exercise.max_reps,
+        readiness: recoveryScore,
+        recentMisses: reps < exercise.min_reps ? 1 : 0,
+        consecutiveHardSets: rir <= 1 ? 1 : 0,
+      });
       const volumeDelta = weight * reps - savedSet.previousWeight * savedSet.previousReps;
       const nextVolume = Math.max(0, completedVolume + volumeDelta);
       const nextTotalSets = completedTotalSets + (savedSet.isNew ? 1 : 0);
@@ -225,13 +224,15 @@ export default function WorkoutSessionScreen() {
 
       if (currentSet < exercise.sets) {
         const nextSet = currentSet + 1;
-        const nextTarget = getNextSetTarget(weight, reps, rir);
-        setCoachLastSet({ weight, reps, nextSet, isPersonalRecord: savedSet.isPersonalRecord, rir });
-        setWeight(nextTarget.weight);
-        setReps(nextTarget.reps);
+        const nextWeight = liveDecision.recommendedWeight > 0 ? liveDecision.recommendedWeight : weight;
+        const nextReps = Math.min(exercise.max_reps, Math.max(1, liveDecision.recommendedReps));
+        setCoachLastSet({ weight, reps, nextSet, isPersonalRecord: savedSet.isPersonalRecord, rir, suggestedRestSeconds: liveDecision.suggestedRestSeconds, qualityScore: liveDecision.qualityScore ?? 0 });
+        setWeight(nextWeight);
+        setReps(nextReps);
         setCurrentSet(nextSet);
         setRir(2);
-        await startRest(restSeconds);
+        setRestSeconds(liveDecision.suggestedRestSeconds);
+        await startRest(liveDecision.suggestedRestSeconds);
         return;
       }
 
@@ -240,7 +241,8 @@ export default function WorkoutSessionScreen() {
         setCurrentExerciseIndex((previous) => previous + 1);
         setCurrentSet(1);
         setRir(2);
-        await startRest(restSeconds);
+        setRestSeconds(liveDecision.suggestedRestSeconds);
+        await startRest(liveDecision.suggestedRestSeconds);
         return;
       }
 
@@ -321,7 +323,7 @@ export default function WorkoutSessionScreen() {
         ) : null}
 
         {readinessMessage && <View style={styles.readiness}><Text style={styles.readinessText}>{readinessMessage}</Text></View>}
-        {coachLastSet && exercise && <CoachNextSetCard weight={coachLastSet.weight} reps={coachLastSet.reps} minReps={exercise.min_reps} maxReps={exercise.max_reps} nextSet={coachLastSet.nextSet} totalSets={exercise.sets} isPersonalRecord={coachLastSet.isPersonalRecord} recoveryScore={recoveryScore} />}
+        {coachLastSet && exercise && <CoachNextSetCard weight={coachLastSet.weight} reps={coachLastSet.reps} minReps={exercise.min_reps} maxReps={exercise.max_reps} nextSet={coachLastSet.nextSet} totalSets={exercise.sets} isPersonalRecord={coachLastSet.isPersonalRecord} recoveryScore={recoveryScore} rir={coachLastSet.rir} suggestedRestSeconds={coachLastSet.suggestedRestSeconds} qualityScore={coachLastSet.qualityScore} />}
 
         <View style={styles.targetCard}>
           <View style={styles.targetHeader}><Text style={styles.targetTitle}>Objectif</Text><Text style={styles.targetBadge}>{reps < (exercise?.min_reps ?? 1) ? "SOUS OBJECTIF" : "ZONE CIBLE"}</Text></View>
