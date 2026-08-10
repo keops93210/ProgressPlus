@@ -1,5 +1,5 @@
 const Colors = {
-  // Progress+ brand palette — premium electric violet + graphite
+  // Progress+ brand palette — premium electric violet + graphite.
   // Violet drives action and identity; green rewards progress; red is reserved for intensity/alerts.
   background: "#0D0E12",
   surface: "#17181E",
@@ -12,7 +12,7 @@ const Colors = {
   primarySoft: "#241B3A",
 
   success: "#22C55E",
-  warning: "#F59E0B",
+  warning: "#A78BFA",
   danger: "#F43F5E",
 
   text: "#F5F5F7",
