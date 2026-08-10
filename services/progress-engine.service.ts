@@ -32,6 +32,7 @@ export type ProgressEngineInput = {
   techniqueGood?: boolean;
   fatigueTrend?: "improving" | "stable" | "rising";
   consecutiveHardSets?: number;
+  maxLoadIncreasePercent?: number;
 };
 
 export type LiveSetState = {
@@ -48,6 +49,7 @@ export type LiveSetState = {
   recentMisses?: number;
   consecutiveHardSets?: number;
   baseRestSeconds?: number;
+  maxLoadIncreasePercent?: number;
 };
 
 export type LiveSetDecision = ProgressionDecision & {
@@ -58,16 +60,10 @@ export type LiveSetDecision = ProgressionDecision & {
 
 function clamp(value: number, min: number, max: number) { return Math.min(max, Math.max(min, value)); }
 
-/**
- * Chooses a conservative load increment instead of assuming every exercise
- * uses the same plates. Small loads get smaller jumps; heavier compound loads
- * can use the familiar 2.5 kg step.
- */
 export function getAdaptiveLoadIncrement(weight: number) {
   if (weight <= 0) return 0;
   if (weight < 10) return 1;
   if (weight < 20) return 2;
-  if (weight < 40) return 2.5;
   return 2.5;
 }
 
@@ -104,6 +100,15 @@ export function getTrainingQualityScore(input: { completedSets: number; plannedS
   return Math.round(clamp(completion * 35 + rir * 25 + readiness * 20 + trend * 15 + pr * 5, 0, 100));
 }
 
+function getRecoveryLoadCap(readiness?: number | null, requestedCap?: number) {
+  const requested = requestedCap == null ? 5 : clamp(requestedCap, 0, 5);
+  if (readiness == null) return requested;
+  if (readiness <= 2) return 0;
+  if (readiness <= 3.2) return 0;
+  if (readiness <= 4.2) return Math.min(requested, 2.5);
+  return requested;
+}
+
 export function getProgressionDecision(input: ProgressEngineInput): ProgressionDecision {
   const weight = Math.max(0, input.weight);
   const reps = Math.max(0, input.reps);
@@ -126,6 +131,7 @@ export function getProgressionDecision(input: ProgressEngineInput): ProgressionD
   const weakTrend = trend <= -3;
   const belowMinimum = reps < minReps;
   const effortZone = getEffortZone(input.rir, input.rpe);
+  const recoveryLoadCap = getRecoveryLoadCap(readiness, input.maxLoadIncreasePercent);
 
   if (veryFatigued) signals.push("récupération basse");
   if (ready) signals.push("récupération élevée");
@@ -138,9 +144,15 @@ export function getProgressionDecision(input: ProgressEngineInput): ProgressionD
   if (!techniqueGood) signals.push("technique à stabiliser");
   if (fatigueRising) signals.push("fatigue en hausse");
   if (consecutiveHardSets >= 2) signals.push("effort élevé sur plusieurs séries");
+  if (recoveryLoadCap === 0) signals.push("surcharge bloquée par la récupération");
 
   const qualityScore = getTrainingQualityScore({ completedSets: belowMinimum ? 0.75 : 1, plannedSets: 1, averageRir: rir, readiness, trendPercent: trend });
   const increment = getAdaptiveLoadIncrement(weight);
+  const uncappedWeight = Number((weight + increment).toFixed(2));
+  const cappedWeight = recoveryLoadCap <= 0
+    ? weight
+    : Math.min(uncappedWeight, Number((weight * (1 + recoveryLoadCap / 100)).toFixed(2)));
+  const canIncreaseLoad = cappedWeight > weight;
 
   if (weight <= 0) return { action: "keep_weight", confidence: 0.45, recommendedWeight: 0, recommendedReps: minReps, reason: `Trouve d'abord une charge qui permet ${minReps}–${maxReps} reps propres.`, signals, effortZone, qualityScore };
   if (readiness !== null && readiness <= 1.5 && (fatigueRising || weakTrend)) return { action: "deload", confidence: 0.93, recommendedWeight: Math.max(0, Number((weight * 0.85).toFixed(2))), recommendedReps: minReps, reason: "Récupération très basse et fatigue en hausse : une réduction temporaire protège la progression.", signals, effortZone, qualityScore };
@@ -148,14 +160,17 @@ export function getProgressionDecision(input: ProgressEngineInput): ProgressionD
   if (!techniqueGood || veryFatigued || (nearFailure && weakTrend)) return { action: "keep_weight", confidence: 0.9, recommendedWeight: weight, recommendedReps: clamp(reps, minReps, maxReps), reason: !techniqueGood ? "La technique doit rester la priorité avant toute surcharge." : "Les signaux de fatigue sont trop élevés pour augmenter la charge aujourd'hui.", signals, effortZone, qualityScore };
   if (misses >= 2 && !ready) return { action: "reduce_load", confidence: 0.82, recommendedWeight: Math.max(0, weight - increment), recommendedReps: minReps, reason: "Les performances récentes montrent que la charge actuelle est trop ambitieuse. On réduit légèrement pour reconstruire une progression stable.", signals, effortZone, qualityScore };
   if (consecutiveHardSets >= 3 && readiness !== null && readiness < 4) return { action: "keep_weight", confidence: 0.89, recommendedWeight: weight, recommendedReps: minReps, reason: "Plusieurs séries sont déjà très exigeantes. On conserve la charge et on évite d'accumuler de la fatigue inutile.", signals, effortZone, qualityScore };
-  if (reps >= maxReps && (rir === null || rir >= 2) && techniqueGood && !weakTrend) return { action: "increase_weight", confidence: clamp(0.78 + (ready ? 0.1 : 0) + (strongTrend ? 0.07 : 0), 0.5, 0.97), recommendedWeight: Number((weight + increment).toFixed(2)), recommendedReps: minReps, reason: `Tu atteins le haut de la fourchette avec suffisamment de marge. Passe à ${Number((weight + increment).toFixed(2))} kg et reconstruis les reps depuis le bas de la zone.`, signals, effortZone, qualityScore };
+  if (reps >= maxReps && (rir === null || rir >= 2) && techniqueGood && !weakTrend) {
+    if (!canIncreaseLoad) return { action: "keep_weight", confidence: 0.9, recommendedWeight: weight, recommendedReps: minReps, reason: "L'objectif est atteint, mais la récupération limite la surcharge aujourd'hui. Consolide la charge actuelle.", signals, effortZone, qualityScore };
+    return { action: "increase_weight", confidence: clamp(0.78 + (ready ? 0.1 : 0) + (strongTrend ? 0.07 : 0), 0.5, 0.97), recommendedWeight: cappedWeight, recommendedReps: minReps, reason: `Tu atteins le haut de la fourchette avec suffisamment de marge. Passe à ${cappedWeight} kg et reconstruis les reps depuis le bas de la zone.`, signals, effortZone, qualityScore };
+  }
   if (comfortable && reps < maxReps) return { action: "increase_reps", confidence: 0.84, recommendedWeight: weight, recommendedReps: Math.min(maxReps, reps + 1), reason: "Tu gardes beaucoup de marge. Ajoute une répétition avant d'augmenter la charge.", signals, effortZone, qualityScore };
   if (weakTrend && sessions >= 2) return { action: "keep_weight", confidence: 0.86, recommendedWeight: weight, recommendedReps: clamp(reps, minReps, maxReps), reason: "La tendance récente est en baisse. On consolide plutôt que de forcer une surcharge.", signals, effortZone, qualityScore };
   return { action: "increase_reps", confidence: 0.72, recommendedWeight: weight, recommendedReps: Math.min(maxReps, Math.max(minReps, reps + 1)), reason: "La meilleure prochaine étape est une petite amélioration des répétitions à charge constante.", signals, effortZone, qualityScore };
 }
 
 export function getLiveSetDecision(state: LiveSetState): LiveSetDecision {
-  const decision = getProgressionDecision({ weight: state.weight, reps: state.reps, rir: state.rir, minReps: state.minReps, maxReps: state.maxReps, readiness: state.readiness, trendPercent: state.trendPercent, recentMisses: state.recentMisses, recentSessions: 3, consecutiveHardSets: state.consecutiveHardSets, fatigueTrend: state.consecutiveHardSets && state.consecutiveHardSets >= 3 ? "rising" : "stable" });
+  const decision = getProgressionDecision({ weight: state.weight, reps: state.reps, rir: state.rir, minReps: state.minReps, maxReps: state.maxReps, readiness: state.readiness, trendPercent: state.trendPercent, recentMisses: state.recentMisses, recentSessions: 3, consecutiveHardSets: state.consecutiveHardSets, fatigueTrend: state.consecutiveHardSets && state.consecutiveHardSets >= 3 ? "rising" : "stable", maxLoadIncreasePercent: state.maxLoadIncreasePercent });
   const nextSetNumber = Math.min(state.plannedSets, state.setNumber + 1);
   const shouldRest = state.setNumber < state.plannedSets || state.completedSets < state.plannedSets;
   const baseRestSeconds = Math.max(30, state.baseRestSeconds ?? 120);
