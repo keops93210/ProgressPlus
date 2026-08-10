@@ -82,8 +82,26 @@ export default function CoachNextSetCard({
           <View style={[styles.decisionBadge, shouldIncreaseWeight && styles.decisionBadgePrimary]}>
             <Text style={[styles.decisionText, shouldIncreaseWeight && styles.decisionTextPrimary]}>{decision}</Text>
           </View>
-          <Text style={styles.setLabel}>{nextSet <= totalSets ? `SÉRIE ${nextSet}` : "DERNIÈRE SÉRIE"}</Text>
+          <Text style={styles.setLabel}>{nextSet <= totalSets ? `SÉRIE ${nextSet}/${totalSets}` : "DERNIÈRE SÉRIE"}</Text>
         </View>
+      </View>
+
+      <View style={styles.setProgress}>
+        {Array.from({ length: Math.max(1, totalSets) }).map((_, index) => {
+          const setNumber = index + 1;
+          const isCompleted = setNumber < nextSet;
+          const isCurrent = setNumber === nextSet;
+          return (
+            <View
+              key={setNumber}
+              style={[
+                styles.setDot,
+                isCompleted && styles.setDotCompleted,
+                isCurrent && styles.setDotCurrent,
+              ]}
+            />
+          );
+        })}
       </View>
 
       <Text style={styles.title}>{title}</Text>
@@ -138,6 +156,10 @@ const styles = StyleSheet.create({
   decisionText: { color: Colors.textSecondary, fontSize: 8, fontWeight: "900", letterSpacing: 0.6 },
   decisionTextPrimary: { color: Colors.primary },
   setLabel: { color: Colors.textSecondary, fontSize: 10, fontWeight: "800", letterSpacing: 0.8 },
+  setProgress: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 13 },
+  setDot: { flex: 1, height: 4, borderRadius: 999, backgroundColor: Colors.border },
+  setDotCompleted: { backgroundColor: Colors.primary + "65" },
+  setDotCurrent: { backgroundColor: Colors.primary, height: 6 },
   title: { color: Colors.text, fontSize: 17, fontWeight: "900", marginTop: 12 },
   message: { color: Colors.textSecondary, fontSize: 13, lineHeight: 19, marginTop: 6 },
   nextTarget: { marginTop: 14, borderRadius: 16, backgroundColor: Colors.primary + "12", borderWidth: 1, borderColor: Colors.primary + "35", padding: 14 },
