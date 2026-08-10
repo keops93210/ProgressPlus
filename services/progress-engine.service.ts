@@ -5,6 +5,8 @@ export type ProgressionAction =
   | "reduce_load"
   | "deload";
 
+export type EffortZone = "easy" | "productive" | "hard" | "failure";
+
 export type ProgressionDecision = {
   action: ProgressionAction;
   confidence: number;
@@ -12,6 +14,8 @@ export type ProgressionDecision = {
   recommendedReps: number;
   reason: string;
   signals: string[];
+  effortZone?: EffortZone;
+  qualityScore?: number;
 };
 
 export type ProgressEngineInput = {
@@ -26,6 +30,8 @@ export type ProgressEngineInput = {
   recentMisses?: number;
   recentSessions?: number;
   techniqueGood?: boolean;
+  fatigueTrend?: "improving" | "stable" | "rising";
+  consecutiveHardSets?: number;
 };
 
 function clamp(value: number, min: number, max: number) {
@@ -37,17 +43,34 @@ export function estimateOneRepMax(weight: number, reps: number) {
   return weight * (1 + reps / 30);
 }
 
+export function normalizeRir(rir?: number | null, rpe?: number | null) {
+  if (typeof rir === "number") return clamp(rir, 0, 5);
+  if (typeof rpe === "number") return clamp(10 - rpe, 0, 5);
+  return null;
+}
+
+export function getEffortZone(rir?: number | null, rpe?: number | null): EffortZone {
+  const normalized = normalizeRir(rir, rpe);
+  if (normalized === null) return "productive";
+  if (normalized <= 0.5) return "failure";
+  if (normalized <= 2) return "hard";
+  if (normalized <= 4) return "productive";
+  return "easy";
+}
+
 export function getProgressionDecision(input: ProgressEngineInput): ProgressionDecision {
   const weight = Math.max(0, input.weight);
   const reps = Math.max(0, input.reps);
   const minReps = Math.max(1, input.minReps);
   const maxReps = Math.max(minReps, input.maxReps);
-  const rir = input.rir ?? null;
+  const rir = normalizeRir(input.rir, input.rpe);
   const readiness = input.readiness ?? null;
   const trend = input.trendPercent ?? 0;
   const misses = Math.max(0, input.recentMisses ?? 0);
   const sessions = Math.max(0, input.recentSessions ?? 0);
   const techniqueGood = input.techniqueGood !== false;
+  const consecutiveHardSets = Math.max(0, input.consecutiveHardSets ?? 0);
+  const fatigueRising = input.fatigueTrend === "rising";
   const signals: string[] = [];
 
   const veryFatigued = readiness !== null && readiness <= 2;
@@ -56,6 +79,7 @@ export function getProgressionDecision(input: ProgressEngineInput): ProgressionD
   const comfortable = rir !== null && rir >= 4;
   const strongTrend = trend >= 3;
   const weakTrend = trend <= -3;
+  const effortZone = getEffortZone(input.rir, input.rpe);
 
   if (veryFatigued) signals.push("récupération basse");
   if (ready) signals.push("récupération élevée");
@@ -65,6 +89,16 @@ export function getProgressionDecision(input: ProgressEngineInput): ProgressionD
   if (weakTrend) signals.push("tendance de force négative");
   if (misses > 0) signals.push(`${misses} série(s) sous l'objectif récemment`);
   if (!techniqueGood) signals.push("technique à stabiliser");
+  if (fatigueRising) signals.push("fatigue en hausse");
+  if (consecutiveHardSets >= 2) signals.push("effort élevé sur plusieurs séries");
+
+  const qualityScore = getTrainingQualityScore({
+    completedSets: 1,
+    plannedSets: 1,
+    averageRir: rir,
+    readiness,
+    trendPercent: trend,
+  });
 
   if (weight <= 0) {
     return {
@@ -74,6 +108,21 @@ export function getProgressionDecision(input: ProgressEngineInput): ProgressionD
       recommendedReps: minReps,
       reason: `Trouve d'abord une charge qui permet ${minReps}–${maxReps} reps propres.`,
       signals,
+      effortZone,
+      qualityScore,
+    };
+  }
+
+  if (readiness !== null && readiness <= 1.5 && (fatigueRising || weakTrend)) {
+    return {
+      action: "deload",
+      confidence: 0.93,
+      recommendedWeight: Math.max(0, Number((weight * 0.85).toFixed(2))),
+      recommendedReps: minReps,
+      reason: "Récupération très basse et fatigue en hausse : une réduction temporaire protège la progression et permet de repartir plus fort.",
+      signals,
+      effortZone,
+      qualityScore,
     };
   }
 
@@ -88,6 +137,8 @@ export function getProgressionDecision(input: ProgressEngineInput): ProgressionD
         ? "La technique doit rester la priorité avant toute surcharge."
         : "Les signaux de fatigue sont trop élevés pour augmenter la charge aujourd'hui.",
       signals,
+      effortZone,
+      qualityScore,
     };
   }
 
@@ -99,11 +150,26 @@ export function getProgressionDecision(input: ProgressEngineInput): ProgressionD
       recommendedReps: minReps,
       reason: "Les performances récentes montrent que la charge actuelle est trop ambitieuse. On réduit légèrement pour reconstruire une progression stable.",
       signals,
+      effortZone,
+      qualityScore,
+    };
+  }
+
+  if (consecutiveHardSets >= 3 && readiness !== null && readiness < 4) {
+    return {
+      action: "keep_weight",
+      confidence: 0.89,
+      recommendedWeight: weight,
+      recommendedReps: minReps,
+      reason: "Plusieurs séries sont déjà très exigeantes. On conserve la charge et on évite d'accumuler de la fatigue inutile.",
+      signals,
+      effortZone,
+      qualityScore,
     };
   }
 
   if (reps >= maxReps && (rir === null || rir >= 2) && techniqueGood && !weakTrend) {
-    const increment = weight >= 100 ? 2.5 : 2.5;
+    const increment = 2.5;
     return {
       action: "increase_weight",
       confidence: clamp(0.78 + (ready ? 0.1 : 0) + (strongTrend ? 0.07 : 0), 0.5, 0.97),
@@ -111,6 +177,8 @@ export function getProgressionDecision(input: ProgressEngineInput): ProgressionD
       recommendedReps: minReps,
       reason: `Tu atteins le haut de la fourchette avec suffisamment de marge. Passe à ${weight + increment} kg et reconstruis les reps depuis le bas de la zone.`,
       signals,
+      effortZone,
+      qualityScore,
     };
   }
 
@@ -122,6 +190,8 @@ export function getProgressionDecision(input: ProgressEngineInput): ProgressionD
       recommendedReps: Math.min(maxReps, reps + 1),
       reason: "Tu gardes beaucoup de marge. Ajoute une répétition avant d'augmenter la charge.",
       signals,
+      effortZone,
+      qualityScore,
     };
   }
 
@@ -133,6 +203,8 @@ export function getProgressionDecision(input: ProgressEngineInput): ProgressionD
       recommendedReps: clamp(reps, minReps, maxReps),
       reason: "La tendance récente est en baisse. On consolide plutôt que de forcer une surcharge.",
       signals,
+      effortZone,
+      qualityScore,
     };
   }
 
@@ -143,6 +215,8 @@ export function getProgressionDecision(input: ProgressEngineInput): ProgressionD
     recommendedReps: Math.min(maxReps, Math.max(minReps, reps + 1)),
     reason: "La meilleure prochaine étape est une petite amélioration des répétitions à charge constante.",
     signals,
+    effortZone,
+    qualityScore,
   };
 }
 
@@ -154,9 +228,7 @@ export function getTrainingQualityScore(input: {
   trendPercent?: number | null;
   personalRecords?: number;
 }) {
-  const completion = input.plannedSets > 0
-    ? clamp(input.completedSets / input.plannedSets, 0, 1)
-    : 0;
+  const completion = input.plannedSets > 0 ? clamp(input.completedSets / input.plannedSets, 0, 1) : 0;
   const rir = input.averageRir == null ? 0.7 : 1 - clamp(Math.abs(input.averageRir - 2.5) / 4, 0, 1);
   const readiness = input.readiness == null ? 0.7 : clamp(input.readiness / 5, 0, 1);
   const trend = input.trendPercent == null ? 0.5 : clamp(0.5 + input.trendPercent / 20, 0, 1);
