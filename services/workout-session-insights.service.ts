@@ -15,7 +15,70 @@ export type WorkoutInsightInput = {
   previousVolume?: number | null;
   personalRecords?: number;
   elapsedSeconds?: number;
+  shortenedSets?: number;
+  averageQuality?: number | null;
 };
+
+export type WorkoutTrend = "progressing" | "stable" | "fatiguing" | "incomplete";
+
+export type WorkoutSessionAnalysis = {
+  trend: WorkoutTrend;
+  headline: string;
+  recommendation: string;
+  completionPercent: number;
+  averageQuality: number | null;
+};
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+export function analyzeWorkoutSession(input: WorkoutInsightInput): WorkoutSessionAnalysis {
+  const completionPercent = input.plannedSets > 0
+    ? Math.round(clamp(input.completedSets / input.plannedSets, 0, 1) * 100)
+    : 0;
+  const quality = input.averageQuality == null ? null : Math.round(clamp(input.averageQuality, 0, 100));
+  const shortened = input.shortenedSets ?? 0;
+  const averageRir = input.averageRir ?? null;
+
+  if (shortened >= 2 || completionPercent < 75) {
+    return {
+      trend: "incomplete",
+      headline: "Objectif à consolider",
+      recommendation: "Conserve une charge maîtrisée et laisse la récupération guider la prochaine progression.",
+      completionPercent,
+      averageQuality: quality,
+    };
+  }
+
+  if ((averageRir != null && averageRir <= 1) && quality != null && quality < 80) {
+    return {
+      trend: "fatiguing",
+      headline: "Fatigue en hausse",
+      recommendation: "Évite de surcharger immédiatement. La priorité est de retrouver de la qualité sur les prochaines séries.",
+      completionPercent,
+      averageQuality: quality,
+    };
+  }
+
+  if ((input.personalRecords ?? 0) > 0 || (quality != null && quality >= 85 && (averageRir == null || averageRir >= 2))) {
+    return {
+      trend: "progressing",
+      headline: "Progression confirmée",
+      recommendation: "La qualité et la marge sont suffisantes pour envisager une progression contrôlée.",
+      completionPercent,
+      averageQuality: quality,
+    };
+  }
+
+  return {
+    trend: "stable",
+    headline: "Séance stable",
+    recommendation: "Garde la charge et construis progressivement les répétitions avant de chercher une hausse.",
+    completionPercent,
+    averageQuality: quality,
+  };
+}
 
 export function buildWorkoutInsights(input: WorkoutInsightInput): WorkoutInsight[] {
   const insights: WorkoutInsight[] = [];
