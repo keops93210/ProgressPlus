@@ -1,3 +1,4 @@
+import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useRef } from "react";
 import { Animated, Easing, StyleSheet, Text, View } from "react-native";
 
@@ -11,6 +12,8 @@ export default function ProgressPlusLaunch({ onFinished }: ProgressPlusLaunchPro
   const markOpacity = useRef(new Animated.Value(0)).current;
   const markScale = useRef(new Animated.Value(0.72)).current;
   const markY = useRef(new Animated.Value(12)).current;
+  const glowOpacity = useRef(new Animated.Value(0)).current;
+  const glowScale = useRef(new Animated.Value(0.7)).current;
   const ringProgress = useRef(new Animated.Value(0)).current;
   const wordOpacity = useRef(new Animated.Value(0)).current;
   const wordY = useRef(new Animated.Value(10)).current;
@@ -24,6 +27,8 @@ export default function ProgressPlusLaunch({ onFinished }: ProgressPlusLaunchPro
         Animated.timing(markOpacity, { toValue: 1, duration: 260, easing: Easing.out(Easing.quad), useNativeDriver: true }),
         Animated.spring(markScale, { toValue: 1, friction: 8, tension: 70, useNativeDriver: true }),
         Animated.timing(markY, { toValue: 0, duration: 420, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.timing(glowOpacity, { toValue: 1, duration: 380, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+        Animated.spring(glowScale, { toValue: 1, friction: 7, tension: 45, useNativeDriver: true }),
       ]),
       Animated.timing(ringProgress, { toValue: 1, duration: 650, easing: Easing.out(Easing.cubic), useNativeDriver: false }),
       Animated.parallel([
@@ -39,13 +44,19 @@ export default function ProgressPlusLaunch({ onFinished }: ProgressPlusLaunchPro
     ]).start(({ finished }) => {
       if (finished) onFinished();
     });
-  }, [markOpacity, markScale, markY, ringProgress, wordOpacity, wordY, taglineOpacity, exitOpacity, exitScale, onFinished]);
+  }, [markOpacity, markScale, markY, glowOpacity, glowScale, ringProgress, wordOpacity, wordY, taglineOpacity, exitOpacity, exitScale, onFinished]);
 
   const progressWidth = ringProgress.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] });
 
   return (
     <Animated.View style={[styles.container, { opacity: exitOpacity, transform: [{ scale: exitScale }] }]}>
+      <LinearGradient
+        colors={["#17101F", Colors.background, Colors.background]}
+        locations={[0, 0.48, 1]}
+        style={StyleSheet.absoluteFill}
+      />
       <View style={styles.center}>
+        <Animated.View style={[styles.glow, { opacity: glowOpacity, transform: [{ scale: glowScale }] }]} />
         <Animated.View style={[styles.mark, { opacity: markOpacity, transform: [{ translateY: markY }, { scale: markScale }] }]}>
           <View style={styles.markInner}>
             <Text style={styles.markP}>P</Text>
@@ -74,7 +85,8 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   center: { width: "100%", alignItems: "center" },
-  mark: { width: 82, height: 82, borderRadius: 24, alignItems: "center", justifyContent: "center", backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, shadowColor: Colors.primary, shadowOpacity: 0.22, shadowRadius: 24, shadowOffset: { width: 0, height: 0 }, elevation: 10 },
+  glow: { position: "absolute", width: 210, height: 210, borderRadius: 105, backgroundColor: Colors.primary, opacity: 0.08, shadowColor: Colors.primary, shadowOpacity: 0.45, shadowRadius: 55, shadowOffset: { width: 0, height: 0 }, elevation: 16 },
+  mark: { width: 82, height: 82, borderRadius: 24, alignItems: "center", justifyContent: "center", backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.borderStrong, shadowColor: Colors.primary, shadowOpacity: 0.28, shadowRadius: 26, shadowOffset: { width: 0, height: 0 }, elevation: 12 },
   markInner: { width: 54, height: 54, alignItems: "center", justifyContent: "center", position: "relative" },
   markP: { color: Colors.text, fontSize: 42, lineHeight: 48, fontWeight: "900", letterSpacing: -4, marginRight: 7 },
   markPlusVertical: { position: "absolute", right: 0, top: 16, width: 5, height: 22, borderRadius: 3, backgroundColor: Colors.primary },
