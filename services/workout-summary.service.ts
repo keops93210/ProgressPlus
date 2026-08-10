@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { getWorkoutQualityScore } from "@/services/workout-effort.service";
 
 export type WorkoutSummary = {
   durationSeconds: number;
@@ -9,6 +10,11 @@ export type WorkoutSummary = {
   previousDurationSeconds: number | null;
   personalRecords: number;
   bestExercise: { name: string; weight: number; reps: number; estimated1rm: number } | null;
+  averageRir: number | null;
+  hardSets: number;
+  failureSets: number;
+  qualityScore: number;
+  completionPercent: number;
   message: string;
   nextSessionAdvice: string;
 };
@@ -23,7 +29,7 @@ export async function getWorkoutSummary(sessionId: string): Promise<WorkoutSumma
 
   const { data: sets, error: setsError } = await supabase
     .from("workout_sets")
-    .select("exercise_id, weight, reps, set_number, exercises(name)")
+    .select("exercise_id, weight, reps, rir, set_number, exercises(name)")
     .eq("session_id", sessionId)
     .eq("completed", true)
     .order("exercise_id")
@@ -33,6 +39,10 @@ export async function getWorkoutSummary(sessionId: string): Promise<WorkoutSumma
   const currentVolume = Number(session.total_volume ?? 0);
   const currentDuration = Number(session.duration_seconds ?? 0);
   const currentSets = Number(session.total_sets ?? sets?.length ?? 0);
+  const rirValues = (sets ?? []).map((row) => Number(row.rir)).filter((value) => Number.isFinite(value));
+  const averageRir = rirValues.length ? Number((rirValues.reduce((sum, value) => sum + value, 0) / rirValues.length).toFixed(1)) : null;
+  const hardSets = rirValues.filter((value) => value <= 1).length;
+  const failureSets = rirValues.filter((value) => value <= 0).length;
 
   const { data: previousSessions, error: previousError } = await supabase
     .from("workout_sessions")
@@ -82,15 +92,26 @@ export async function getWorkoutSummary(sessionId: string): Promise<WorkoutSumma
   }
 
   const prCount = personalRecordExercises.size;
-  let message = "Séance enregistrée. Le Coach va utiliser ces données pour ajuster ta prochaine séance.";
-  if (volumeChangePercent !== null && volumeChangePercent > 0) message = `Tu as augmenté ton volume de ${volumeChangePercent}% par rapport à ta dernière séance.`;
-  else if (volumeChangePercent !== null && volumeChangePercent < 0) message = `Ton volume est ${Math.abs(volumeChangePercent)}% plus bas que la dernière séance : la qualité et la récupération restent prioritaires.`;
-  else if (prCount > 0) message = `${prCount} record${prCount > 1 ? "s" : ""} personnel${prCount > 1 ? "s" : ""} détecté${prCount > 1 ? "s" : ""}. Ta performance progresse.`;
+  const qualityScore = getWorkoutQualityScore({
+    completedSets: currentSets,
+    plannedSets: Math.max(currentSets, sets?.length ?? currentSets),
+    averageRir: averageRir ?? 2.5,
+    personalRecords: prCount,
+  });
+  const completionPercent = currentSets > 0 ? Math.min(100, Math.round((currentSets / Math.max(currentSets, sets?.length ?? currentSets)) * 100)) : 0;
 
-  let nextSessionAdvice = "Repars de cette performance comme référence et laisse le Coach ajuster la charge série par série.";
-  if (volumeChangePercent !== null && volumeChangePercent >= 5) nextSessionAdvice = "Ne surcharge pas automatiquement : confirme d'abord que la technique et la récupération restent bonnes à la prochaine séance.";
-  if (volumeChangePercent !== null && volumeChangePercent <= -5) nextSessionAdvice = "Conserve les charges maîtrisées à la prochaine séance et cherche d'abord à retrouver ton niveau de performance.";
-  if (prCount > 0) nextSessionAdvice = "Tes records deviennent la nouvelle référence. Le Coach cherchera maintenant à consolider avant de proposer une nouvelle surcharge.";
+  let message = "Séance enregistrée. Le Coach va utiliser ces données pour ajuster ta prochaine séance.";
+  if (prCount > 0) message = `${prCount} record${prCount > 1 ? "s" : ""} personnel${prCount > 1 ? "s" : ""} détecté${prCount > 1 ? "s" : ""}. Ta performance progresse.`;
+  else if (hardSets >= 3) message = `Bonne intensité, mais ${hardSets} séries très difficiles : Progress+ va privilégier la récupération avant une nouvelle surcharge.`;
+  else if (volumeChangePercent !== null && volumeChangePercent > 0) message = `Tu as augmenté ton volume de ${volumeChangePercent}% par rapport à ta dernière séance.`;
+  else if (volumeChangePercent !== null && volumeChangePercent < 0) message = `Ton volume est ${Math.abs(volumeChangePercent)}% plus bas que la dernière séance : la qualité et la récupération restent prioritaires.`;
+
+  let nextSessionAdvice = "Repars de cette performance comme référence et laisse le Coach ajuster ta progression série par série.";
+  if (failureSets >= 2) nextSessionAdvice = "Deux séries ou plus ont atteint l'échec : récupère avant de chercher une surcharge à la prochaine séance.";
+  else if (hardSets >= 3) nextSessionAdvice = "Plusieurs séries étaient très exigeantes : consolide les charges avant d'augmenter.";
+  else if (volumeChangePercent !== null && volumeChangePercent >= 5) nextSessionAdvice = "Le volume progresse bien. Confirme la technique et la récupération avant toute nouvelle surcharge.";
+  else if (volumeChangePercent !== null && volumeChangePercent <= -5) nextSessionAdvice = "Conserve les charges maîtrisées et cherche d'abord à retrouver ton niveau de performance.";
+  if (prCount > 0) nextSessionAdvice = "Tes records deviennent la nouvelle référence. Le Coach cherchera d'abord à les consolider.";
 
   return {
     durationSeconds: currentDuration,
@@ -101,6 +122,11 @@ export async function getWorkoutSummary(sessionId: string): Promise<WorkoutSumma
     previousDurationSeconds: previous ? Number(previous.duration_seconds ?? 0) : null,
     personalRecords: prCount,
     bestExercise,
+    averageRir,
+    hardSets,
+    failureSets,
+    qualityScore,
+    completionPercent,
     message,
     nextSessionAdvice,
   };
