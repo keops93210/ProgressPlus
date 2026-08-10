@@ -23,15 +23,57 @@ export interface RecoveryCheckin extends RecoveryCheckinInput {
   pain_score?: RecoveryValue;
 }
 
+export type RecoveryLevel = "low" | "moderate" | "good" | "excellent";
+
 export function calculateRecoveryScore(input: RecoveryCheckinInput) {
   return Number(((input.sleep + input.energy + input.mood + input.fatigue + input.pain) / 5).toFixed(2));
 }
 
+/**
+ * Turns the check-in into an actionable training constraint.
+ * The score does not replace the live effort signals: it only sets the
+ * starting level of caution before the first set.
+ */
 export function getRecoveryAdvice(score: number) {
-  if (score <= 2) return { level: "low" as const, title: "Récupération faible", message: "On privilégie la qualité. Garde une charge maîtrisée et évite de chercher un record aujourd'hui." };
-  if (score <= 3.2) return { level: "moderate" as const, title: "Récupération moyenne", message: "Séance normale, mais reste attentif à tes sensations et ne force pas si la technique se dégrade." };
-  if (score <= 4.2) return { level: "good" as const, title: "Bonne récupération", message: "Tu peux suivre la progression prévue si tes séries restent propres." };
-  return { level: "excellent" as const, title: "Très bonne récupération", message: "Tu es dans de bonnes conditions. Si tes séries sont solides, Progress+ peut pousser la progression." };
+  const normalized = Math.min(5, Math.max(1, score));
+
+  if (normalized <= 2) {
+    return {
+      level: "low" as RecoveryLevel,
+      title: "Récupération faible",
+      message: "Aujourd'hui, priorité à la qualité. Garde une charge maîtrisée et évite de chercher un record.",
+      targetRir: 3,
+      allowLoadIncrease: false,
+    };
+  }
+
+  if (normalized <= 3.2) {
+    return {
+      level: "moderate" as RecoveryLevel,
+      title: "Récupération moyenne",
+      message: "Séance normale, mais reste attentif à tes sensations et ne force pas si la technique se dégrade.",
+      targetRir: 2,
+      allowLoadIncrease: false,
+    };
+  }
+
+  if (normalized <= 4.2) {
+    return {
+      level: "good" as RecoveryLevel,
+      title: "Bonne récupération",
+      message: "Tu peux suivre la progression prévue si tes séries restent propres.",
+      targetRir: 2,
+      allowLoadIncrease: true,
+    };
+  }
+
+  return {
+    level: "excellent" as RecoveryLevel,
+    title: "Très bonne récupération",
+    message: "Tu es dans de bonnes conditions. Si tes séries sont solides, Progress+ peut pousser la progression.",
+    targetRir: 1.5,
+    allowLoadIncrease: true,
+  };
 }
 
 export async function saveRecoveryCheckin(userId: string, sessionId: string, input: RecoveryCheckinInput) {
