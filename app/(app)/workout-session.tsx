@@ -24,7 +24,7 @@ import {
 import { ProgramExercise } from "@/types/programExercise";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
-import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, AppState, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 type CoachLastSet = {
@@ -42,6 +42,7 @@ export default function WorkoutSessionScreen() {
   const [saving, setSaving] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sessionStartedAt, setSessionStartedAt] = useState<number | null>(null);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [exercises, setExercises] = useState<ProgramExercise[]>([]);
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
   const [currentSet, setCurrentSet] = useState(1);
@@ -115,6 +116,25 @@ export default function WorkoutSessionScreen() {
   }, [programId, userId]);
 
   useEffect(() => {
+    if (!sessionStartedAt || completed) return;
+
+    const updateElapsed = () => {
+      setElapsedSeconds(Math.max(0, Math.floor((Date.now() - sessionStartedAt) / 1000)));
+    };
+
+    updateElapsed();
+    const interval = setInterval(updateElapsed, 1000);
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") updateElapsed();
+    });
+
+    return () => {
+      clearInterval(interval);
+      subscription.remove();
+    };
+  }, [sessionStartedAt, completed]);
+
+  useEffect(() => {
     if (!exercise || !userId || !checkInDone) return;
     let cancelled = false;
     async function loadExerciseData() {
@@ -171,6 +191,14 @@ export default function WorkoutSessionScreen() {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
     return minutes === 0 ? `${remainingSeconds}s` : `${minutes}m${remainingSeconds.toString().padStart(2, "0")}`;
+  }
+
+  function formatWorkoutDuration(seconds: number) {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const remainingSeconds = seconds % 60;
+    if (hours > 0) return `${hours}:${minutes.toString().padStart(2, "0")}:${remainingSeconds.toString().padStart(2, "0")}`;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
   }
 
   function getNextSetTarget(completedWeight: number, completedReps: number) {
@@ -296,6 +324,20 @@ export default function WorkoutSessionScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <Header title={exercise?.exercises.name ?? "Aucun exercice"} subtitle={`Série ${currentSet} / ${totalSets}`} />
+      <View style={styles.workoutDurationBar}>
+        <View style={styles.workoutDurationCopy}>
+          <Text style={styles.workoutDurationLabel}>DURÉE DE LA SÉANCE</Text>
+          <Text style={styles.workoutDurationValue}>{formatWorkoutDuration(elapsedSeconds)}</Text>
+        </View>
+        <View style={styles.workoutDurationMeta}>
+          <Text style={styles.workoutDurationMetaValue}>{completedTotalSets}</Text>
+          <Text style={styles.workoutDurationMetaLabel}>séries</Text>
+        </View>
+        <View style={styles.workoutDurationMeta}>
+          <Text style={styles.workoutDurationMetaValue}>{Math.round(completedVolume).toLocaleString("fr-FR")}</Text>
+          <Text style={styles.workoutDurationMetaLabel}>kg</Text>
+        </View>
+      </View>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         {exercise ? (
           <Pressable onPress={() => router.push({ pathname: "/(app)/exercise-detail", params: { id: exercise.exercise_id } })} style={({ pressed }) => [styles.exerciseHero, pressed && styles.exerciseHeroPressed]}>
@@ -354,6 +396,13 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background, padding: 20 },
   checkinContent: { paddingTop: 20, paddingBottom: 40 },
   content: { paddingTop: 20, paddingBottom: 40, gap: 20 },
+  workoutDurationBar: { flexDirection: "row", alignItems: "center", minHeight: 68, marginTop: 14, paddingHorizontal: 16, borderRadius: 18, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border },
+  workoutDurationCopy: { flex: 1 },
+  workoutDurationLabel: { color: Colors.textSecondary, fontSize: 9, fontWeight: "900", letterSpacing: 1.1 },
+  workoutDurationValue: { color: Colors.primary, fontSize: 25, fontWeight: "900", fontVariant: ["tabular-nums"], marginTop: 2 },
+  workoutDurationMeta: { minWidth: 58, alignItems: "center", paddingLeft: 12, marginLeft: 8, borderLeftWidth: 1, borderLeftColor: Colors.border },
+  workoutDurationMetaValue: { color: Colors.text, fontSize: 16, fontWeight: "900", fontVariant: ["tabular-nums"] },
+  workoutDurationMetaLabel: { color: Colors.textSecondary, fontSize: 9, fontWeight: "700", marginTop: 2 },
   exerciseHero: { flexDirection: "row", alignItems: "center", padding: 12, borderRadius: 20, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border },
   exerciseHeroPressed: { opacity: 0.75 },
   exerciseImageWrap: { width: 82, height: 82, borderRadius: 16, overflow: "hidden", backgroundColor: Colors.surfaceLight },
