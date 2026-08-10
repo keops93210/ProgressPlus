@@ -1,22 +1,27 @@
 const Colors = {
-  // Light mode — clean, premium white + violet
-  background: "#FFFFFF",
-  surface: "#FFFFFF",
-  surfaceLight: "#F7F5FF",
+  // Progress+ brand palette — graphite + orange
+  // Orange drives action and motivation; green rewards progress; red is reserved for intensity/alerts.
+  background: "#101114",
+  surface: "#181A1F",
+  surfaceLight: "#22252B",
+  surfaceElevated: "#272A31",
 
-  primary: "#7C3AED",
-  primaryDark: "#6D28D9",
-  primaryLight: "#8B5CF6",
+  primary: "#FF6B00",
+  primaryDark: "#E85F00",
+  primaryLight: "#FF8A33",
+  primarySoft: "#3A2415",
 
-  success: "#16A34A",
-  warning: "#D97706",
-  danger: "#DC2626",
+  success: "#22C55E",
+  warning: "#F59E0B",
+  danger: "#EF4444",
 
-  text: "#17131F",
-  textSecondary: "#625A6B",
-  textMuted: "#8E8798",
+  text: "#F5F5F5",
+  textSecondary: "#B5B7BD",
+  textMuted: "#7F838C",
+  textOnPrimary: "#FFFFFF",
 
-  border: "#E7E1F0",
+  border: "#2E3239",
+  borderStrong: "#3A3E46",
 };
 
 export default Colors;
