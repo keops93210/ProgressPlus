@@ -1,30 +1,49 @@
 export type WorkoutResumeDecision =
   | { type: "new" }
-  | { type: "resume"; sessionId: string }
-  | { type: "stale"; sessionId: string; ageMinutes: number };
+  | { type: "resume"; sessionId: string; progress: number; elapsedSeconds: number }
+  | { type: "stale"; sessionId: string; ageMinutes: number; progress: number; elapsedSeconds: number };
 
 const STALE_SESSION_MINUTES = 6 * 60;
+
+function elapsedSeconds(startedAt: string | Date, now: Date) {
+  const start = new Date(startedAt).getTime();
+  if (!Number.isFinite(start)) return 0;
+  return Math.max(0, Math.floor((now.getTime() - start) / 1000));
+}
 
 export function getWorkoutResumeDecision(input: {
   activeSessionId: string | null | undefined;
   startedAt: string | Date | null | undefined;
+  completedSets?: number;
+  plannedSets?: number;
+  finishedAt?: string | Date | null;
   now?: Date;
+  staleAfterMinutes?: number;
 }): WorkoutResumeDecision {
   if (!input.activeSessionId || !input.startedAt) return { type: "new" };
 
+  const now = input.now ?? new Date();
   const startedAt = new Date(input.startedAt).getTime();
-  const now = (input.now ?? new Date()).getTime();
-  const ageMinutes = Math.max(0, Math.floor((now - startedAt) / 60000));
+  const ageMinutes = Math.max(0, Math.floor((now.getTime() - startedAt) / 60000));
+  const completedSets = Math.max(0, input.completedSets ?? 0);
+  const plannedSets = Math.max(0, input.plannedSets ?? 0);
+  const progress = plannedSets > 0 ? Math.min(1, completedSets / plannedSets) : 0;
+  const elapsed = elapsedSeconds(input.startedAt, now);
+  const staleLimit = Math.max(30, input.staleAfterMinutes ?? STALE_SESSION_MINUTES);
 
-  if (!Number.isFinite(startedAt) || ageMinutes >= STALE_SESSION_MINUTES) {
-    return {
-      type: "stale",
-      sessionId: input.activeSessionId,
-      ageMinutes,
-    };
+  if (!Number.isFinite(startedAt) || input.finishedAt) {
+    return { type: "stale", sessionId: input.activeSessionId, ageMinutes, progress, elapsedSeconds: elapsed };
   }
 
-  return { type: "resume", sessionId: input.activeSessionId };
+  if (plannedSets > 0 && completedSets >= plannedSets) {
+    return { type: "stale", sessionId: input.activeSessionId, ageMinutes, progress: 1, elapsedSeconds: elapsed };
+  }
+
+  if (ageMinutes >= staleLimit) {
+    return { type: "stale", sessionId: input.activeSessionId, ageMinutes, progress, elapsedSeconds: elapsed };
+  }
+
+  return { type: "resume", sessionId: input.activeSessionId, progress, elapsedSeconds: elapsed };
 }
 
 export function formatResumeAge(ageMinutes: number) {
