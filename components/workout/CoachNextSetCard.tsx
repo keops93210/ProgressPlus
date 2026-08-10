@@ -35,7 +35,7 @@ export default function CoachNextSetCard({
       ? weight + 2.5
       : weight;
   const nextReps = recoveryLow
-    ? minReps
+    ? Math.min(maxReps, Math.max(minReps, reps))
     : isAboveTarget && recoveryHigh
       ? minReps
       : isBelowTarget
@@ -53,7 +53,7 @@ export default function CoachNextSetCard({
           : "Bonne série. On continue proprement.";
 
   const message = recoveryLow
-    ? `Ta récupération est basse. Garde ${weight} kg et vise au moins ${minReps} reps sans forcer.`
+    ? `Ta récupération est basse. Garde ${weight} kg et reste dans une zone maîtrisée, sans chercher à forcer.`
     : isAboveTarget && recoveryHigh
       ? `${maxReps} reps atteintes avec une bonne récupération. Progress+ augmente légèrement la charge pour la prochaine série.`
       : isAboveTarget
@@ -90,15 +90,24 @@ export default function CoachNextSetCard({
       </View>
 
       <View style={styles.targetRow}>
-        <View>
+        <View style={styles.metricBlock}>
           <Text style={styles.label}>Dernière série</Text>
           <Text style={styles.value}>{weight} kg × {reps}</Text>
         </View>
         <View style={styles.divider} />
-        <View>
+        <View style={styles.metricBlock}>
           <Text style={styles.label}>Zone</Text>
           <Text style={styles.value}>{minReps}–{maxReps} reps</Text>
         </View>
+        {typeof recoveryScore === "number" && (
+          <>
+            <View style={styles.divider} />
+            <View style={styles.metricBlock}>
+              <Text style={styles.label}>Récup.</Text>
+              <Text style={styles.value}>{recoveryScore.toFixed(1)}/5</Text>
+            </View>
+          </>
+        )}
       </View>
 
       {isPersonalRecord && (
@@ -124,9 +133,10 @@ const styles = StyleSheet.create({
   nextTargetValue: { color: Colors.text, fontSize: 26, fontWeight: "900", marginTop: 4 },
   nextTargetHint: { color: Colors.textSecondary, fontSize: 10, fontWeight: "600", marginTop: 3 },
   targetRow: { flexDirection: "row", alignItems: "center", marginTop: 14, paddingTop: 13, borderTopWidth: 1, borderTopColor: Colors.border },
-  label: { color: Colors.textSecondary, fontSize: 10, fontWeight: "700", textTransform: "uppercase" },
-  value: { color: Colors.text, fontSize: 15, fontWeight: "900", marginTop: 3 },
-  divider: { width: 1, height: 30, backgroundColor: Colors.border, marginHorizontal: 18 },
+  metricBlock: { flexShrink: 1 },
+  label: { color: Colors.textSecondary, fontSize: 9, fontWeight: "700", textTransform: "uppercase" },
+  value: { color: Colors.text, fontSize: 13, fontWeight: "900", marginTop: 3 },
+  divider: { width: 1, height: 30, backgroundColor: Colors.border, marginHorizontal: 10 },
   prBadge: { alignSelf: "flex-start", marginTop: 12, paddingHorizontal: 9, paddingVertical: 6, borderRadius: 999, backgroundColor: Colors.primary + "18" },
   prText: { color: Colors.primary, fontSize: 9, fontWeight: "900", letterSpacing: 0.6 },
 });
