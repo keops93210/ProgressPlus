@@ -1,4 +1,4 @@
-import { Check, TrendingDown, TrendingUp } from "lucide-react-native";
+import { Check, ShieldCheck, TrendingDown, TrendingUp } from "lucide-react-native";
 import { StyleSheet, Text, View } from "react-native";
 
 import Colors from "@/constants/colors";
@@ -44,6 +44,20 @@ export default function CoachNextSetCard({
     : shouldConsolidate
       ? "CONSOLIDER"
       : "MAINTENIR";
+
+  const confidence = shouldIncreaseWeight
+    ? "ÉLEVÉE"
+    : recoveryLow || isBelowTarget
+      ? "PRUDENTE"
+      : "MOYENNE";
+
+  const confidenceMessage = shouldIncreaseWeight
+    ? "Performance + récupération cohérentes."
+    : recoveryLow
+      ? "La récupération limite volontairement la progression."
+      : isBelowTarget
+        ? "La priorité est de rentrer dans la zone cible."
+        : "Progression possible, mais sans surcharge automatique.";
 
   const setQuality = isBelowTarget
     ? "À renforcer"
@@ -122,6 +136,14 @@ export default function CoachNextSetCard({
       </View>
       <Text style={styles.qualityMessage}>{setQualityMessage}</Text>
 
+      <View style={styles.confidenceRow}>
+        <ShieldCheck size={15} color={Colors.primary} />
+        <View style={styles.confidenceCopy}>
+          <Text style={styles.confidenceLabel}>CONFIANCE DU COACH · {confidence}</Text>
+          <Text style={styles.confidenceMessage}>{confidenceMessage}</Text>
+        </View>
+      </View>
+
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.message}>{message}</Text>
 
@@ -185,6 +207,10 @@ const styles = StyleSheet.create({
   qualityScore: { width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center", backgroundColor: Colors.primary + "18", borderWidth: 1, borderColor: Colors.primary + "35" },
   qualityScoreText: { color: Colors.primary, fontSize: 15, fontWeight: "900" },
   qualityMessage: { color: Colors.textSecondary, fontSize: 11, lineHeight: 16, marginTop: 4 },
+  confidenceRow: { flexDirection: "row", alignItems: "center", marginTop: 12, paddingTop: 11, borderTopWidth: 1, borderTopColor: Colors.border },
+  confidenceCopy: { flex: 1, marginLeft: 8 },
+  confidenceLabel: { color: Colors.primary, fontSize: 9, fontWeight: "900", letterSpacing: 0.7 },
+  confidenceMessage: { color: Colors.textSecondary, fontSize: 10, lineHeight: 15, marginTop: 2 },
   title: { color: Colors.text, fontSize: 17, fontWeight: "900", marginTop: 12 },
   message: { color: Colors.textSecondary, fontSize: 13, lineHeight: 19, marginTop: 6 },
   nextTarget: { marginTop: 14, borderRadius: 16, backgroundColor: Colors.primary + "12", borderWidth: 1, borderColor: Colors.primary + "35", padding: 14 },
