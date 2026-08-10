@@ -22,8 +22,8 @@ export type WorkoutSetCoachResult = {
 
 /**
  * Single source of truth for the immediate answer after a completed set.
- * Keeps the UI simple and makes the same coaching decision reusable by
- * the workout screen, summary and future notifications.
+ * A conservative feedback state must never be overridden by a raw load
+ * recommendation from the progression engine.
  */
 export function getWorkoutSetCoach(input: WorkoutSetCoachInput): WorkoutSetCoachResult {
   const feedback = getSetFeedback({
@@ -35,14 +35,22 @@ export function getWorkoutSetCoach(input: WorkoutSetCoachInput): WorkoutSetCoach
     isPersonalRecord: input.isPersonalRecord,
   });
 
-  const increase = feedback.shouldIncreaseLoad && input.liveDecision.recommendedWeight > input.weight;
+  const engineSuggestsIncrease = input.liveDecision.recommendedWeight > input.weight;
+  const shouldIncreaseLoad = feedback.shouldIncreaseLoad && engineSuggestsIncrease;
+  const nextWeight = shouldIncreaseLoad
+    ? input.liveDecision.recommendedWeight
+    : input.weight;
+
+  const nextReps = feedback.tone === "warning" || feedback.tone === "intense"
+    ? Math.min(input.maxReps, Math.max(1, input.reps))
+    : Math.min(input.maxReps, Math.max(1, input.liveDecision.recommendedReps));
 
   return {
     feedback,
-    nextWeight: input.liveDecision.recommendedWeight > 0 ? input.liveDecision.recommendedWeight : input.weight,
-    nextReps: Math.min(input.maxReps, Math.max(1, input.liveDecision.recommendedReps)),
+    nextWeight,
+    nextReps,
     suggestedRestSeconds: Math.max(15, input.liveDecision.suggestedRestSeconds),
     qualityScore: input.liveDecision.qualityScore ?? 0,
-    shouldIncreaseLoad: increase,
+    shouldIncreaseLoad,
   };
 }
