@@ -71,7 +71,7 @@ type SessionSummary = { averageReps: number; averageVolume: number; weight: numb
 async function getRecentExerciseSessions(userId: string, exerciseId: string, limit = 3): Promise<SessionSummary[]> {
   const { data: sessions, error: sessionsError } = await supabase
     .from("workout_sets")
-    .select("session_id, weight, reps, workout_sessions!inner(user_id, finished_at)")
+    .select("session_id, weight, reps, created_at, workout_sessions!inner(user_id, finished_at)")
     .eq("exercise_id", exerciseId)
     .eq("workout_sessions.user_id", userId)
     .not("workout_sessions.finished_at", "is", null)
@@ -81,16 +81,14 @@ async function getRecentExerciseSessions(userId: string, exerciseId: string, lim
   const grouped = new Map<string, ProgressionSet[]>();
   for (const row of sessions ?? []) {
     const sessionId = String(row.session_id);
-    const list = grouped.get(sessionId) ?? [];
+    const existing = grouped.get(sessionId);
+    if (!existing && grouped.size >= limit) continue;
+    const list = existing ?? [];
     list.push({ weight: Number(row.weight) || 0, reps: Number(row.reps) || 0, set_number: list.length + 1 });
     grouped.set(sessionId, list);
-    if (grouped.size >= limit && list.length > 0) {
-      // Keep collecting rows belonging to the sessions already discovered.
-      continue;
-    }
   }
 
-  return Array.from(grouped.values()).slice(0, limit).map((sets) => {
+  return Array.from(grouped.values()).map((sets) => {
     const averageReps = sets.reduce((sum, set) => sum + set.reps, 0) / Math.max(1, sets.length);
     const averageVolume = sets.reduce((sum, set) => sum + set.weight * set.reps, 0);
     const weight = sets[0]?.weight ?? 0;
