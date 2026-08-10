@@ -111,6 +111,7 @@ export function getProgressionDecision(input: ProgressEngineInput): ProgressionD
   const comfortable = rir !== null && rir >= 4;
   const strongTrend = trend >= 3;
   const weakTrend = trend <= -3;
+  const belowMinimum = reps < minReps;
   const effortZone = getEffortZone(input.rir, input.rpe);
 
   if (veryFatigued) signals.push("récupération basse");
@@ -119,14 +120,16 @@ export function getProgressionDecision(input: ProgressEngineInput): ProgressionD
   if (comfortable) signals.push("marge importante");
   if (strongTrend) signals.push("tendance de force positive");
   if (weakTrend) signals.push("tendance de force négative");
+  if (belowMinimum) signals.push(`série écourtée à ${reps} reps`);
   if (misses > 0) signals.push(`${misses} série(s) sous l'objectif récemment`);
   if (!techniqueGood) signals.push("technique à stabiliser");
   if (fatigueRising) signals.push("fatigue en hausse");
   if (consecutiveHardSets >= 2) signals.push("effort élevé sur plusieurs séries");
 
-  const qualityScore = getTrainingQualityScore({ completedSets: 1, plannedSets: 1, averageRir: rir, readiness, trendPercent: trend });
+  const qualityScore = getTrainingQualityScore({ completedSets: belowMinimum ? 0.75 : 1, plannedSets: 1, averageRir: rir, readiness, trendPercent: trend });
   if (weight <= 0) return { action: "keep_weight", confidence: 0.45, recommendedWeight: 0, recommendedReps: minReps, reason: `Trouve d'abord une charge qui permet ${minReps}–${maxReps} reps propres.`, signals, effortZone, qualityScore };
   if (readiness !== null && readiness <= 1.5 && (fatigueRising || weakTrend)) return { action: "deload", confidence: 0.93, recommendedWeight: Math.max(0, Number((weight * 0.85).toFixed(2))), recommendedReps: minReps, reason: "Récupération très basse et fatigue en hausse : une réduction temporaire protège la progression.", signals, effortZone, qualityScore };
+  if (belowMinimum) return { action: "keep_weight", confidence: 0.94, recommendedWeight: weight, recommendedReps: minReps, reason: `Série écourtée à ${reps} reps. On garde ${weight} kg et on reconstruit les répétitions avant toute augmentation.`, signals, effortZone, qualityScore };
   if (!techniqueGood || veryFatigued || (nearFailure && weakTrend)) return { action: "keep_weight", confidence: 0.9, recommendedWeight: weight, recommendedReps: clamp(reps, minReps, maxReps), reason: !techniqueGood ? "La technique doit rester la priorité avant toute surcharge." : "Les signaux de fatigue sont trop élevés pour augmenter la charge aujourd'hui.", signals, effortZone, qualityScore };
   if (misses >= 2 && !ready) return { action: "reduce_load", confidence: 0.82, recommendedWeight: Math.max(0, weight - 2.5), recommendedReps: minReps, reason: "Les performances récentes montrent que la charge actuelle est trop ambitieuse. On réduit légèrement pour reconstruire une progression stable.", signals, effortZone, qualityScore };
   if (consecutiveHardSets >= 3 && readiness !== null && readiness < 4) return { action: "keep_weight", confidence: 0.89, recommendedWeight: weight, recommendedReps: minReps, reason: "Plusieurs séries sont déjà très exigeantes. On conserve la charge et on évite d'accumuler de la fatigue inutile.", signals, effortZone, qualityScore };
