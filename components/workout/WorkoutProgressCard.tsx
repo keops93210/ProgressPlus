@@ -16,6 +16,8 @@ export default function WorkoutProgressCard({ totalSets, completedSets, weight, 
   const progress = totalSets > 0 ? Math.min(1, completedCount / totalSets) : 0;
   const remainingSets = Math.max(0, totalSets - completedCount);
   const currentVolume = Math.max(0, weight) * Math.max(0, reps);
+  const estimated1RM = weight > 0 && reps > 0 ? weight * (1 + reps / 30) : 0;
+  const progressPercent = Math.round(progress * 100);
 
   return (
     <Card>
@@ -35,15 +37,20 @@ export default function WorkoutProgressCard({ totalSets, completedSets, weight, 
       </View>
 
       <View style={styles.progressTrack}>
-        <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
+        <View style={[styles.progressFill, { width: `${progressPercent}%` }]} />
       </View>
+      <Text style={styles.progressCaption}>{progressPercent}% de l'exercice terminé</Text>
 
       <View style={styles.summaryRow}>
-        <View>
+        <View style={styles.summaryBlock}>
           <Text style={styles.summaryLabel}>MAINTENANT</Text>
           <Text style={styles.summaryValue}>{weight} kg <Text style={styles.summaryMultiply}>×</Text> {reps}</Text>
         </View>
-        <View style={styles.summaryRight}>
+        <View style={styles.summaryBlock}>
+          <Text style={styles.summaryLabel}>1RM ESTIMÉ</Text>
+          <Text style={styles.summaryValue}>{estimated1RM > 0 ? `${Math.round(estimated1RM)} kg` : "—"}</Text>
+        </View>
+        <View style={[styles.summaryBlock, styles.summaryRight]}>
           <Text style={styles.summaryLabel}>RESTE</Text>
           <Text style={styles.summaryValue}>{remainingSets} série{remainingSets > 1 ? "s" : ""}</Text>
         </View>
@@ -69,7 +76,7 @@ export default function WorkoutProgressCard({ totalSets, completedSets, weight, 
                   {current ? "  ·  MAINTENANT" : ""}
                 </Text>
                 <Text style={styles.setSubtitle}>
-                  {completed ? "Enregistrée" : current ? `${weight} kg × ${reps} reps` : "À venir"}
+                  {completed ? "Série enregistrée" : current ? `${weight} kg × ${reps} reps` : "À venir"}
                 </Text>
               </View>
               {completed ? (
@@ -91,7 +98,7 @@ export default function WorkoutProgressCard({ totalSets, completedSets, weight, 
       <View style={styles.nextBox}>
         <View style={styles.nextCopy}>
           <Text style={styles.nextLabel}>PROCHAINE SÉRIE</Text>
-          <Text style={styles.nextHint}>Garde le même niveau ou ajuste selon tes sensations</Text>
+          <Text style={styles.nextHint}>Garde cette cible et ajuste seulement si tes sensations l'exigent.</Text>
         </View>
         <View style={styles.nextMetric}>
           <Text style={styles.nextValue}>{weight}</Text>
@@ -125,10 +132,12 @@ const styles = StyleSheet.create({
   counterTotal: { color: Colors.textSecondary, fontSize: 15, fontWeight: "800" },
   progressTrack: { height: 8, borderRadius: 8, backgroundColor: Colors.surfaceLight, overflow: "hidden", marginTop: 16 },
   progressFill: { height: "100%", borderRadius: 8, backgroundColor: Colors.primary },
-  summaryRow: { flexDirection: "row", justifyContent: "space-between", marginTop: 16, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  progressCaption: { color: Colors.textMuted, fontSize: 9, fontWeight: "800", marginTop: 6, textAlign: "right" },
+  summaryRow: { flexDirection: "row", justifyContent: "space-between", marginTop: 12, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  summaryBlock: { flex: 1 },
   summaryRight: { alignItems: "flex-end" },
   summaryLabel: { color: Colors.textSecondary, fontSize: 8, fontWeight: "900", letterSpacing: 1 },
-  summaryValue: { color: Colors.text, fontSize: 15, fontWeight: "900", marginTop: 4 },
+  summaryValue: { color: Colors.text, fontSize: 14, fontWeight: "900", marginTop: 4 },
   summaryMultiply: { color: Colors.primary },
   setList: { marginTop: 12, gap: 7 },
   setRow: { minHeight: 56, borderRadius: 15, paddingHorizontal: 10, flexDirection: "row", alignItems: "center", backgroundColor: Colors.background, borderWidth: 1, borderColor: "transparent" },
