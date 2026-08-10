@@ -17,22 +17,17 @@ export async function finishWorkoutSession(sessionId: string, duration: number, 
 
 export async function saveWorkoutSet(sessionId: string, exerciseId: string, setNumber: number, weight: number, reps: number) {
   if (weight <= 0 || reps <= 0 || setNumber <= 0) throw new Error("Les valeurs de la série sont invalides.");
-
   const { data: existingSet, error: existingError } = await supabase.from("workout_sets").select("id, weight, reps").eq("session_id", sessionId).eq("exercise_id", exerciseId).eq("set_number", setNumber).maybeSingle();
   if (existingError) throw existingError;
-
   const isNew = !existingSet;
   const previousWeight = existingSet ? Number(existingSet.weight) || 0 : 0;
   const previousReps = existingSet ? Number(existingSet.reps) || 0 : 0;
   const payload = { weight, reps, completed: true };
-
   const query = existingSet
     ? supabase.from("workout_sets").update(payload).eq("id", existingSet.id).select().single()
     : supabase.from("workout_sets").insert({ session_id: sessionId, exercise_id: exerciseId, set_number: setNumber, ...payload }).select().single();
-
   const { data, error } = await query;
   if (error) throw error;
-
   const isPersonalRecord = await updatePersonalRecord(sessionId, exerciseId, weight, reps);
   return { ...data, isNew, previousWeight, previousReps, isPersonalRecord };
 }
@@ -85,15 +80,31 @@ export async function getProgressionRecommendation(userId: string | null, exerci
 
   const currentWeight = sets[0].weight;
   const averageReps = sets.reduce((sum, set) => sum + set.reps, 0) / sets.length;
-  const allAtTop = sets.length >= plannedSets && sets.every((set) => set.reps >= maxReps);
+  const weakestReps = Math.min(...sets.map((set) => set.reps));
+  const topSetCount = sets.filter((set) => set.reps >= maxReps).length;
+  const topSetRatio = topSetCount / sets.length;
+  const consistency = Math.max(0, 1 - (Math.max(...sets.map((set) => set.reps)) - weakestReps) / Math.max(1, maxReps));
+  const allAtTop = sets.length >= plannedSets && topSetCount === sets.length;
+
   if (allAtTop && currentWeight > 0) {
     const recommendedWeight = currentWeight + 2.5;
-    return { action: "increase_weight", currentWeight, recommendedWeight, currentReps: Math.round(averageReps), recommendedReps: minReps, minReps, maxReps, completedSets: sets.length, message: `Toutes tes séries ont atteint ${maxReps} reps. Passe à ${recommendedWeight} kg et repars à ${minReps} reps.` };
+    return { action: "increase_weight", currentWeight, recommendedWeight, currentReps: Math.round(averageReps), recommendedReps: minReps, minReps, maxReps, completedSets: sets.length, message: `Toutes tes séries sont à ${maxReps} reps. Tu es prêt pour ${recommendedWeight} kg. Repars à ${minReps} reps et reconstruis.` };
   }
-  if (averageReps >= minReps && currentWeight > 0) {
+
+  if (currentWeight > 0 && weakestReps < minReps) {
+    return { action: "keep_weight", currentWeight, recommendedWeight: currentWeight, currentReps: Math.round(averageReps), recommendedReps: minReps, minReps, maxReps, completedSets: sets.length, message: `La série la plus faible est sous ${minReps} reps. Garde ${currentWeight} kg jusqu'à stabiliser toutes tes séries dans la zone.` };
+  }
+
+  if (currentWeight > 0 && topSetRatio >= 0.75 && consistency >= 0.75) {
     const recommendedReps = Math.min(maxReps, Math.round(averageReps) + 1);
-    return { action: recommendedReps > Math.round(averageReps) ? "increase_reps" : "keep_weight", currentWeight, recommendedWeight: currentWeight, currentReps: Math.round(averageReps), recommendedReps, minReps, maxReps, completedSets: sets.length, message: `Garde ${currentWeight} kg et vise ${recommendedReps} reps sur les prochaines séries.` };
+    return { action: recommendedReps >= maxReps ? "keep_weight" : "increase_reps", currentWeight, recommendedWeight: currentWeight, currentReps: Math.round(averageReps), recommendedReps, minReps, maxReps, completedSets: sets.length, message: `Très bonne maîtrise à ${currentWeight} kg. Vise ${recommendedReps} reps avec une exécution propre sur la prochaine séance.` };
   }
+
+  if (averageReps >= minReps && currentWeight > 0) {
+    const recommendedReps = Math.min(maxReps, Math.max(minReps, Math.round(averageReps) + 1));
+    return { action: "increase_reps", currentWeight, recommendedWeight: currentWeight, currentReps: Math.round(averageReps), recommendedReps, minReps, maxReps, completedSets: sets.length, message: `Garde ${currentWeight} kg. Cherche ${recommendedReps} reps sans sacrifier l'amplitude ni la technique.` };
+  }
+
   return { action: "keep_weight", currentWeight, recommendedWeight: currentWeight, currentReps: Math.round(averageReps), recommendedReps: Math.max(minReps, Math.round(averageReps)), minReps, maxReps, completedSets: sets.length, message: `Garde ${currentWeight} kg et consolide ta technique dans la zone ${minReps}–${maxReps} reps.` };
 }
 
