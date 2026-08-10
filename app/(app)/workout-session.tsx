@@ -3,6 +3,7 @@ import WorkoutRepsCard from "@/components/workout/WorkoutRepsCard";
 import WorkoutWeightCard from "@/components/workout/WorkoutWeightCard";
 import LastPerformance from "@/components/workout/LastPerformance";
 import CoachNextSetCard from "@/components/workout/CoachNextSetCard";
+import WorkoutEffortCard from "@/components/workout/WorkoutEffortCard";
 import WorkoutCheckIn, { WorkoutCheckInValues } from "@/components/workout/WorkoutCheckIn";
 import WorkoutSummaryCard from "@/components/workout/WorkoutSummaryCard";
 import RestTimerCard from "@/components/workout/RestTimerCard";
@@ -14,6 +15,7 @@ import { saveRecoveryCheckin, getRecoveryAdvice } from "@/services/recovery.serv
 import { awardWorkoutPoints } from "@/services/ranking.service";
 import { getWorkoutSummary, WorkoutSummary } from "@/services/workout-summary.service";
 import { useRestTimerStore } from "@/stores/rest-timer.store";
+import { saveWorkoutEffort } from "@/services/workout-effort.service";
 import { finishWorkoutSession, getLastPerformance, getProgressionRecommendation, getWorkoutExercises, getWorkoutSession, saveWorkoutSet, startWorkoutSession, ProgressionRecommendation } from "@/services/workout-session.service";
 import { ProgramExercise } from "@/types/programExercise";
 import { router, useLocalSearchParams } from "expo-router";
@@ -21,22 +23,12 @@ import { useEffect, useState } from "react";
 import { Alert, AppState, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-type CoachLastSet = { weight: number; reps: number; nextSet: number; isPersonalRecord: boolean };
+type CoachLastSet = { weight: number; reps: number; nextSet: number; isPersonalRecord: boolean; rir: number };
 
 export default function WorkoutSessionScreen() {
   const { programId } = useLocalSearchParams<{ programId: string }>();
   const { user } = useAuth();
-  const {
-    start: startRest,
-    active: restActive,
-    remaining: restRemaining,
-    duration: restDuration,
-    add: addRest,
-    remove: removeRest,
-    skip: skipRest,
-    hydrate: hydrateRest,
-    sync: syncRest,
-  } = useRestTimerStore();
+  const { start: startRest, active: restActive, remaining: restRemaining, duration: restDuration, add: addRest, remove: removeRest, skip: skipRest, hydrate: hydrateRest, sync: syncRest } = useRestTimerStore();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -47,6 +39,7 @@ export default function WorkoutSessionScreen() {
   const [currentSet, setCurrentSet] = useState(1);
   const [weight, setWeight] = useState(0);
   const [reps, setReps] = useState(8);
+  const [rir, setRir] = useState(2);
   const [restSeconds, setRestSeconds] = useState(120);
   const [completedVolume, setCompletedVolume] = useState(0);
   const [completedTotalSets, setCompletedTotalSets] = useState(0);
@@ -119,9 +112,7 @@ export default function WorkoutSessionScreen() {
       }
     }
     loadWorkout();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [programId, userId]);
 
   useEffect(() => {
@@ -129,19 +120,15 @@ export default function WorkoutSessionScreen() {
     const updateElapsed = () => setElapsedSeconds(Math.max(0, Math.floor((Date.now() - sessionStartedAt) / 1000)));
     updateElapsed();
     const interval = setInterval(updateElapsed, 1000);
-    const subscription = AppState.addEventListener("change", (state) => {
-      if (state === "active") updateElapsed();
-    });
-    return () => {
-      clearInterval(interval);
-      subscription.remove();
-    };
+    const subscription = AppState.addEventListener("change", (state) => { if (state === "active") updateElapsed(); });
+    return () => { clearInterval(interval); subscription.remove(); };
   }, [sessionStartedAt, completed]);
 
   useEffect(() => {
     if (!exercise || !userId || !checkInDone) return;
     let cancelled = false;
     setRestSeconds(Math.max(15, exercise.rest_seconds || 120));
+    setRir(2);
     async function loadExerciseData() {
       try {
         setLastPerformanceLoading(true);
@@ -166,17 +153,12 @@ export default function WorkoutSessionScreen() {
       } catch (error) {
         console.log("EXERCISE PROGRESSION ERROR =", error);
       } finally {
-        if (!cancelled) {
-          setLastPerformanceLoading(false);
-          setRecommendationLoading(false);
-        }
+        if (!cancelled) { setLastPerformanceLoading(false); setRecommendationLoading(false); }
       }
     }
     loadExerciseData();
     setCoachLastSet(null);
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [exercise?.exercise_id, userId, checkInDone]);
 
   async function handleCheckIn(values: WorkoutCheckInValues) {
@@ -208,13 +190,17 @@ export default function WorkoutSessionScreen() {
     return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
   }
 
-  function getNextSetTarget(completedWeight: number, completedReps: number) {
+  function getNextSetTarget(completedWeight: number, completedReps: number, completedRir: number) {
     if (!exercise) return { weight: completedWeight, reps: completedReps };
     const min = exercise.min_reps;
     const max = exercise.max_reps;
     const highRecovery = recoveryScore !== null && recoveryScore >= 4.2;
+    const veryEasy = completedRir >= 4;
+    const nearFailure = completedRir <= 1;
+    if (nearFailure) return { weight: completedWeight, reps: Math.max(min, Math.min(max, completedReps)) };
     if (completedReps < min) return { weight: completedWeight, reps: min };
-    if (completedReps >= max && highRecovery && completedWeight > 0) return { weight: completedWeight + 2.5, reps: min };
+    if (completedReps >= max && highRecovery && veryEasy && completedWeight > 0) return { weight: completedWeight + 2.5, reps: min };
+    if (completedReps >= max && veryEasy && completedWeight > 0) return { weight: completedWeight + 2.5, reps: min };
     if (completedReps >= min) return { weight: completedWeight, reps: Math.min(max, completedReps + 1) };
     return { weight: completedWeight, reps: Math.max(min, completedReps) };
   }
@@ -228,6 +214,7 @@ export default function WorkoutSessionScreen() {
     try {
       setSaving(true);
       const savedSet = await saveWorkoutSet(sessionId, exercise.exercise_id, currentSet, weight, reps);
+      await saveWorkoutEffort(sessionId, exercise.exercise_id, currentSet, rir);
       const volumeDelta = weight * reps - savedSet.previousWeight * savedSet.previousReps;
       const nextVolume = Math.max(0, completedVolume + volumeDelta);
       const nextTotalSets = completedTotalSets + (savedSet.isNew ? 1 : 0);
@@ -238,11 +225,12 @@ export default function WorkoutSessionScreen() {
 
       if (currentSet < exercise.sets) {
         const nextSet = currentSet + 1;
-        const nextTarget = getNextSetTarget(weight, reps);
-        setCoachLastSet({ weight, reps, nextSet, isPersonalRecord: savedSet.isPersonalRecord });
+        const nextTarget = getNextSetTarget(weight, reps, rir);
+        setCoachLastSet({ weight, reps, nextSet, isPersonalRecord: savedSet.isPersonalRecord, rir });
         setWeight(nextTarget.weight);
         setReps(nextTarget.reps);
         setCurrentSet(nextSet);
+        setRir(2);
         await startRest(restSeconds);
         return;
       }
@@ -251,39 +239,26 @@ export default function WorkoutSessionScreen() {
         setCoachLastSet(null);
         setCurrentExerciseIndex((previous) => previous + 1);
         setCurrentSet(1);
+        setRir(2);
         await startRest(restSeconds);
         return;
       }
 
       const duration = sessionStartedAt ? Math.max(0, Math.floor((Date.now() - sessionStartedAt) / 1000)) : 0;
       await finishWorkoutSession(sessionId, duration, nextVolume, nextTotalSets);
-      try {
-        const summary = await getWorkoutSummary(sessionId);
-        setWorkoutSummary(summary);
-      } catch (summaryError) {
-        console.log("WORKOUT SUMMARY ERROR =", summaryError);
-      }
-
+      try { setWorkoutSummary(await getWorkoutSummary(sessionId)); } catch (summaryError) { console.log("WORKOUT SUMMARY ERROR =", summaryError); }
       if (userId) {
         try {
-          const result = await awardWorkoutPoints(userId, {
-            volume: nextVolume,
-            totalSets: nextTotalSets,
-            personalRecords: nextPersonalRecords,
-          });
+          const result = await awardWorkoutPoints(userId, { volume: nextVolume, totalSets: nextTotalSets, personalRecords: nextPersonalRecords });
           setEarnedPoints(result.pointsEarned);
-        } catch (rankingError) {
-          console.log("RANKING AWARD ERROR =", rankingError);
-        }
+        } catch (rankingError) { console.log("RANKING AWARD ERROR =", rankingError); }
       }
       await skipRest();
       setCompleted(true);
     } catch (error) {
       console.log("SAVE SET ERROR =", error);
       Alert.alert("Erreur", "Impossible d'enregistrer la série.");
-    } finally {
-      setSaving(false);
-    }
+    } finally { setSaving(false); }
   }
 
   function applyRecommendation() {
@@ -309,9 +284,7 @@ export default function WorkoutSessionScreen() {
             <View style={styles.completedStat}><Text style={styles.completedStatValue}>{Math.round(completedVolume).toLocaleString("fr-FR")}</Text><Text style={styles.completedStatLabel}>kg volume</Text></View>
             {earnedPoints !== null && <><View style={styles.completedDivider} /><View style={styles.completedStat}><Text style={styles.completedStatValue}>+{earnedPoints}</Text><Text style={styles.completedStatLabel}>points</Text></View></>}
           </View>
-          <Pressable style={styles.completedButton} onPress={() => router.replace("/(app)/home")}>
-            <Text style={styles.completedButtonText}>RETOUR À L'ACCUEIL</Text>
-          </Pressable>
+          <Pressable style={styles.completedButton} onPress={() => router.replace("/(app)/home")}><Text style={styles.completedButtonText}>RETOUR À L'ACCUEIL</Text></Pressable>
         </ScrollView>
       </SafeAreaView>
     );
@@ -321,9 +294,7 @@ export default function WorkoutSessionScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <Header title="Préparation" subtitle="Avant ta séance" />
-        <ScrollView contentContainerStyle={styles.checkinContent} showsVerticalScrollIndicator={false}>
-          <WorkoutCheckIn onContinue={handleCheckIn} />
-        </ScrollView>
+        <ScrollView contentContainerStyle={styles.checkinContent} showsVerticalScrollIndicator={false}><WorkoutCheckIn onContinue={handleCheckIn} /></ScrollView>
       </SafeAreaView>
     );
   }
@@ -334,23 +305,13 @@ export default function WorkoutSessionScreen() {
     <SafeAreaView style={styles.container}>
       <Header title={exercise?.exercises.name ?? "Aucun exercice"} subtitle={`Série ${currentSet} / ${totalSets}`} />
       <View style={styles.workoutDurationBar}>
-        <View style={styles.workoutDurationCopy}>
-          <Text style={styles.workoutDurationLabel}>DURÉE DE LA SÉANCE</Text>
-          <Text style={styles.workoutDurationValue}>{formatWorkoutDuration(elapsedSeconds)}</Text>
-        </View>
+        <View style={styles.workoutDurationCopy}><Text style={styles.workoutDurationLabel}>DURÉE DE LA SÉANCE</Text><Text style={styles.workoutDurationValue}>{formatWorkoutDuration(elapsedSeconds)}</Text></View>
         <View style={styles.workoutDurationMeta}><Text style={styles.workoutDurationMetaValue}>{completedTotalSets}</Text><Text style={styles.workoutDurationMetaLabel}>séries</Text></View>
         <View style={styles.workoutDurationMeta}><Text style={styles.workoutDurationMetaValue}>{Math.round(completedVolume).toLocaleString("fr-FR")}</Text><Text style={styles.workoutDurationMetaLabel}>kg</Text></View>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        <RestTimerCard
-          active={restActive}
-          remaining={restRemaining}
-          duration={restDuration}
-          onSkip={() => void skipRest()}
-          onAdd={() => void addRest(15)}
-          onRemove={() => void removeRest(15)}
-        />
+        <RestTimerCard active={restActive} remaining={restRemaining} duration={restDuration} onSkip={() => void skipRest()} onAdd={() => void addRest(15)} onRemove={() => void removeRest(15)} />
 
         {exercise ? (
           <Pressable onPress={() => router.push({ pathname: "/(app)/exercise-detail", params: { id: exercise.exercise_id } })} style={({ pressed }) => [styles.exerciseHero, pressed && styles.exerciseHeroPressed]}>
@@ -379,22 +340,13 @@ export default function WorkoutSessionScreen() {
 
         <WorkoutWeightCard weight={weight} onIncrease={() => setWeight((value) => value + 2.5)} onDecrease={() => setWeight((value) => Math.max(0, value - 2.5))} />
         <WorkoutRepsCard reps={reps} onIncrease={() => setReps((value) => Math.min(exercise?.max_reps ?? value + 1, value + 1))} onDecrease={() => setReps((value) => Math.max(1, value - 1))} />
+        <WorkoutEffortCard rir={rir} onChangeRir={setRir} />
 
         {reps < (exercise?.min_reps ?? 1) && <View style={styles.belowTarget}><Text style={styles.belowTargetTitle}>Série écourtée</Text><Text style={styles.belowTargetText}>Tu peux terminer cette série à {reps} reps même si l'objectif était de {exercise?.min_reps}–{exercise?.max_reps}. Progress+ enregistrera la performance réelle.</Text></View>}
         <WorkoutProgressCard totalSets={totalSets} completedSets={completedSets} weight={weight} reps={reps} lastWeight={coachLastSet?.weight} lastReps={coachLastSet?.reps} />
       </ScrollView>
 
-      <BottomButton
-        title={saving ? "ENREGISTREMENT..." : restActive ? "REPOS EN COURS — PASSER LE REPOS" : reps < (exercise?.min_reps ?? 1) ? "TERMINER LA SÉRIE" : currentSet === totalSets ? currentExerciseIndex === exercises.length - 1 ? "TERMINER LA SÉANCE" : "EXERCICE SUIVANT" : "VALIDER LA SÉRIE"}
-        onPress={() => {
-          if (restActive) {
-            void skipRest();
-            return;
-          }
-          void validateSet();
-        }}
-        disabled={!exercise || saving}
-      />
+      <BottomButton title={saving ? "ENREGISTREMENT..." : restActive ? "REPOS EN COURS — PASSER LE REPOS" : reps < (exercise?.min_reps ?? 1) ? "TERMINER LA SÉRIE" : currentSet === totalSets ? currentExerciseIndex === exercises.length - 1 ? "TERMINER LA SÉANCE" : "EXERCICE SUIVANT" : "VALIDER LA SÉRIE"} onPress={() => { if (restActive) { void skipRest(); return; } void validateSet(); }} disabled={!exercise || saving} />
     </SafeAreaView>
   );
 }
