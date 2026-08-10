@@ -2,6 +2,7 @@ import WorkoutProgressCard from "@/components/workout/WorkoutProgressCard";
 import WorkoutRepsCard from "@/components/workout/WorkoutRepsCard";
 import WorkoutWeightCard from "@/components/workout/WorkoutWeightCard";
 import LastPerformance from "@/components/workout/LastPerformance";
+import CoachNextSetCard from "@/components/workout/CoachNextSetCard";
 import WorkoutCheckIn, { WorkoutCheckInValues } from "@/components/workout/WorkoutCheckIn";
 import BottomButton from "@/components/ui/BottomButton";
 import Header from "@/components/ui/Header";
@@ -26,6 +27,13 @@ import { useEffect, useState } from "react";
 import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+type CoachLastSet = {
+  weight: number;
+  reps: number;
+  nextSet: number;
+  isPersonalRecord: boolean;
+};
+
 export default function WorkoutSessionScreen() {
   const { programId } = useLocalSearchParams<{ programId: string }>();
   const { user } = useAuth();
@@ -47,7 +55,9 @@ export default function WorkoutSessionScreen() {
   const [recommendation, setRecommendation] = useState<ProgressionRecommendation | null>(null);
   const [recommendationLoading, setRecommendationLoading] = useState(false);
   const [checkInDone, setCheckInDone] = useState(false);
+  const [recoveryScore, setRecoveryScore] = useState<number | null>(null);
   const [readinessMessage, setReadinessMessage] = useState<string | null>(null);
+  const [coachLastSet, setCoachLastSet] = useState<CoachLastSet | null>(null);
   const [completed, setCompleted] = useState(false);
   const [earnedPoints, setEarnedPoints] = useState<number | null>(null);
 
@@ -75,6 +85,7 @@ export default function WorkoutSessionScreen() {
         const savedSets = (sessionWithSets?.workout_sets ?? []).filter((set: any) => set.completed !== false);
         setCompletedVolume(savedSets.reduce((sum: number, set: any) => sum + Number(set.weight || 0) * Number(set.reps || 0), 0));
         setCompletedTotalSets(savedSets.length);
+        if (sessionWithSets?.recovery_score != null) setRecoveryScore(Number(sessionWithSets.recovery_score));
         let resumeExerciseIndex = 0;
         let resumeSet = 1;
         for (let index = 0; index < loadedExercises.length; index += 1) {
@@ -137,6 +148,7 @@ export default function WorkoutSessionScreen() {
       }
     }
     loadExerciseData();
+    setCoachLastSet(null);
     return () => { cancelled = true; };
   }, [exercise?.exercise_id, userId, checkInDone]);
 
@@ -144,7 +156,9 @@ export default function WorkoutSessionScreen() {
     if (!sessionId || !userId) return;
     try {
       const saved = await saveRecoveryCheckin(userId, sessionId, values as any);
-      const advice = getRecoveryAdvice(saved.recovery_score);
+      const score = Number(saved.recovery_score);
+      setRecoveryScore(score);
+      const advice = getRecoveryAdvice(score);
       setReadinessMessage(`${advice.title} — ${advice.message}`);
       setCheckInDone(true);
     } catch (error) {
@@ -157,6 +171,28 @@ export default function WorkoutSessionScreen() {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
     return minutes === 0 ? `${remainingSeconds}s` : `${minutes}m${remainingSeconds.toString().padStart(2, "0")}`;
+  }
+
+  function getNextSetTarget(completedWeight: number, completedReps: number) {
+    if (!exercise) return { weight: completedWeight, reps: completedReps };
+    const min = exercise.min_reps;
+    const max = exercise.max_reps;
+    const lowRecovery = recoveryScore !== null && recoveryScore <= 2;
+    const highRecovery = recoveryScore !== null && recoveryScore >= 4.2;
+
+    if (completedReps < min) {
+      return { weight: completedWeight, reps: min };
+    }
+
+    if (completedReps >= max && highRecovery && completedWeight > 0) {
+      return { weight: completedWeight + 2.5, reps: min };
+    }
+
+    if (completedReps >= min) {
+      return { weight: completedWeight, reps: Math.min(max, completedReps + 1) };
+    }
+
+    return { weight: completedWeight, reps: Math.max(min, completedReps) };
   }
 
   async function validateSet() {
@@ -177,12 +213,18 @@ export default function WorkoutSessionScreen() {
       setPersonalRecordsThisSession(nextPersonalRecords);
 
       if (currentSet < exercise.sets) {
-        setCurrentSet((previous) => previous + 1);
+        const nextSet = currentSet + 1;
+        const nextTarget = getNextSetTarget(weight, reps);
+        setCoachLastSet({ weight, reps, nextSet, isPersonalRecord: savedSet.isPersonalRecord });
+        setWeight(nextTarget.weight);
+        setReps(nextTarget.reps);
+        setCurrentSet(nextSet);
         await startRest(exercise.rest_seconds || 120);
         return;
       }
 
       if (currentExerciseIndex < exercises.length - 1) {
+        setCoachLastSet(null);
         setCurrentExerciseIndex((previous) => previous + 1);
         setCurrentSet(1);
         await startRest(exercise.rest_seconds || 120);
@@ -272,6 +314,18 @@ export default function WorkoutSessionScreen() {
           </Pressable>
         ) : null}
         {readinessMessage && <View style={styles.readiness}><Text style={styles.readinessText}>{readinessMessage}</Text></View>}
+        {coachLastSet && exercise && (
+          <CoachNextSetCard
+            weight={coachLastSet.weight}
+            reps={coachLastSet.reps}
+            minReps={exercise.min_reps}
+            maxReps={exercise.max_reps}
+            nextSet={coachLastSet.nextSet}
+            totalSets={exercise.sets}
+            isPersonalRecord={coachLastSet.isPersonalRecord}
+            recoveryScore={recoveryScore}
+          />
+        )}
         <View style={styles.targetCard}>
           <Text style={styles.targetTitle}>Objectif</Text>
           <Text style={styles.targetValue}>{exercise ? `${exercise.min_reps}–${exercise.max_reps} répétitions` : "—"}</Text>
@@ -289,7 +343,7 @@ export default function WorkoutSessionScreen() {
         )}
         <WorkoutWeightCard weight={weight} onIncrease={() => setWeight((value) => value + 2.5)} onDecrease={() => setWeight((value) => Math.max(0, value - 2.5))} />
         <WorkoutRepsCard reps={reps} onIncrease={() => setReps((value) => Math.min(exercise?.max_reps ?? value + 1, value + 1))} onDecrease={() => setReps((value) => Math.max(exercise?.min_reps ?? 1, value - 1))} />
-        <WorkoutProgressCard totalSets={totalSets} completedSets={completedSets} weight={weight} reps={reps} />
+        <WorkoutProgressCard totalSets={totalSets} completedSets={completedSets} weight={weight} reps={reps} lastWeight={coachLastSet?.weight} lastReps={coachLastSet?.reps} />
       </ScrollView>
       <BottomButton title={saving ? "ENREGISTREMENT..." : currentSet === totalSets ? currentExerciseIndex === exercises.length - 1 ? "TERMINER LA SÉANCE" : "EXERCICE SUIVANT" : "VALIDER LA SÉRIE"} onPress={validateSet} disabled={!exercise || saving} />
     </SafeAreaView>
