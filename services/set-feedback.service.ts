@@ -22,9 +22,8 @@ function clamp(value: number, min: number, max: number) {
 }
 
 /**
- * Turns a completed set into a short, human-readable coaching message.
- * This is deliberately UI-agnostic so the same feedback can be reused by
- * the workout screen, notifications and the future workout summary.
+ * Converts the completed set into one conservative coaching message.
+ * The real performance always wins over the planned target.
  */
 export function getSetFeedback(input: SetFeedbackInput): SetFeedback {
   const minReps = Math.max(1, input.minReps);
@@ -38,8 +37,20 @@ export function getSetFeedback(input: SetFeedbackInput): SetFeedback {
     return {
       tone: "warning",
       title: "Série écourtée",
-      message: `Tu as fait ${reps} rep${reps > 1 ? "s" : ""} sur un minimum de ${minReps}. On enregistre la performance réelle et on évite de surcharger.`,
+      message: `Tu as fait ${reps} rep${reps > 1 ? "s" : ""} sur un minimum de ${minReps}. On garde la performance réelle et on évite de surcharger.`,
       completionRatio,
+      shouldIncreaseLoad: false,
+    };
+  }
+
+  if (rir <= 1) {
+    return {
+      tone: "intense",
+      title: rir <= 0 ? "Échec atteint" : "Série très intense",
+      message: rir <= 0
+        ? "Tu as atteint l'échec. Progress+ protège la prochaine série : récupération avant surcharge."
+        : `Tu es à ${rir} RIR. La série est très intense : récupération et qualité avant toute surcharge.`,
+      completionRatio: 1,
       shouldIncreaseLoad: false,
     };
   }
@@ -61,16 +72,6 @@ export function getSetFeedback(input: SetFeedbackInput): SetFeedback {
       message: `Haut de fourchette atteint avec ${rir} RIR. La prochaine étape peut être une petite hausse de charge.`,
       completionRatio: 1,
       shouldIncreaseLoad: true,
-    };
-  }
-
-  if (rir <= 1) {
-    return {
-      tone: "intense",
-      title: "Série très intense",
-      message: `Tu es à ${rir} RIR. On privilégie la récupération et la qualité avant toute surcharge.`,
-      completionRatio: 1,
-      shouldIncreaseLoad: false,
     };
   }
 
