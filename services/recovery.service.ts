@@ -25,54 +25,72 @@ export interface RecoveryCheckin extends RecoveryCheckinInput {
 
 export type RecoveryLevel = "low" | "moderate" | "good" | "excellent";
 
+export type RecoveryAdvice = {
+  level: RecoveryLevel;
+  title: string;
+  message: string;
+  targetRir: number;
+  allowLoadIncrease: boolean;
+  maxLoadIncreasePercent: number;
+  restMultiplier: number;
+};
+
 export function calculateRecoveryScore(input: RecoveryCheckinInput) {
   return Number(((input.sleep + input.energy + input.mood + input.fatigue + input.pain) / 5).toFixed(2));
 }
 
 /**
- * Turns the check-in into an actionable training constraint.
- * The score does not replace the live effort signals: it only sets the
- * starting level of caution before the first set.
+ * Turns the check-in into actionable training constraints.
+ * Recovery sets the starting guardrails; live set quality can still make
+ * the engine more conservative during the workout.
  */
-export function getRecoveryAdvice(score: number) {
+export function getRecoveryAdvice(score: number): RecoveryAdvice {
   const normalized = Math.min(5, Math.max(1, score));
 
   if (normalized <= 2) {
     return {
-      level: "low" as RecoveryLevel,
+      level: "low",
       title: "Récupération faible",
       message: "Aujourd'hui, priorité à la qualité. Garde une charge maîtrisée et évite de chercher un record.",
       targetRir: 3,
       allowLoadIncrease: false,
+      maxLoadIncreasePercent: 0,
+      restMultiplier: 1.15,
     };
   }
 
   if (normalized <= 3.2) {
     return {
-      level: "moderate" as RecoveryLevel,
+      level: "moderate",
       title: "Récupération moyenne",
       message: "Séance normale, mais reste attentif à tes sensations et ne force pas si la technique se dégrade.",
-      targetRir: 2,
+      targetRir: 2.5,
       allowLoadIncrease: false,
+      maxLoadIncreasePercent: 0,
+      restMultiplier: 1.05,
     };
   }
 
   if (normalized <= 4.2) {
     return {
-      level: "good" as RecoveryLevel,
+      level: "good",
       title: "Bonne récupération",
       message: "Tu peux suivre la progression prévue si tes séries restent propres.",
       targetRir: 2,
       allowLoadIncrease: true,
+      maxLoadIncreasePercent: 2.5,
+      restMultiplier: 1,
     };
   }
 
   return {
-    level: "excellent" as RecoveryLevel,
+    level: "excellent",
     title: "Très bonne récupération",
     message: "Tu es dans de bonnes conditions. Si tes séries sont solides, Progress+ peut pousser la progression.",
     targetRir: 1.5,
     allowLoadIncrease: true,
+    maxLoadIncreasePercent: 5,
+    restMultiplier: 0.95,
   };
 }
 
