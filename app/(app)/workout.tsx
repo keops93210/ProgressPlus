@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { ChevronLeft, Compass, Globe2, LockKeyhole } from "lucide-react-native";
+import { ChevronLeft, Compass, Globe2, LockKeyhole, Wrench } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { Alert, FlatList, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -35,61 +35,23 @@ export default function Workout() {
   }
 
   async function handlePublish(program: WorkoutProgram) {
-    Alert.alert(
-      "Publier dans la communauté",
-      "Ton programme sera partagé gratuitement avec les autres utilisateurs. Tu pourras ensuite le retirer de la communauté.",
-      [
-        { text: "Annuler", style: "cancel" },
-        {
-          text: "Publier",
-          onPress: async () => {
-            try {
-              setPublishingId(program.id);
-              await publishCommunityProgram(program.id);
-              await loadPrograms();
-            } catch (error: any) {
-              Alert.alert("Erreur", error.message);
-            } finally {
-              setPublishingId(null);
-            }
-          },
-        },
-      ],
-    );
+    Alert.alert("Publier dans la communauté", "Ton programme sera partagé gratuitement avec les autres utilisateurs. Tu pourras ensuite le retirer de la communauté.", [
+      { text: "Annuler", style: "cancel" },
+      { text: "Publier", onPress: async () => { try { setPublishingId(program.id); await publishCommunityProgram(program.id); await loadPrograms(); } catch (error: any) { Alert.alert("Erreur", error.message); } finally { setPublishingId(null); } } },
+    ]);
   }
 
   async function handleUnpublish(program: WorkoutProgram) {
-    Alert.alert(
-      "Retirer de la communauté",
-      "Le programme ne sera plus proposé aux autres utilisateurs. Les téléchargements déjà effectués resteront dans leurs programmes.",
-      [
-        { text: "Annuler", style: "cancel" },
-        {
-          text: "Retirer",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              setPublishingId(program.id);
-              await unpublishCommunityProgram(program.id);
-              await loadPrograms();
-            } catch (error: any) {
-              Alert.alert("Erreur", error.message);
-            } finally {
-              setPublishingId(null);
-            }
-          },
-        },
-      ],
-    );
+    Alert.alert("Retirer de la communauté", "Le programme ne sera plus proposé aux autres utilisateurs. Les téléchargements déjà effectués resteront dans leurs programmes.", [
+      { text: "Annuler", style: "cancel" },
+      { text: "Retirer", style: "destructive", onPress: async () => { try { setPublishingId(program.id); await unpublishCommunityProgram(program.id); await loadPrograms(); } catch (error: any) { Alert.alert("Erreur", error.message); } finally { setPublishingId(null); } } },
+    ]);
   }
 
   async function handleDelete(id: string) {
     Alert.alert("Supprimer", "Supprimer ce programme ?", [
       { text: "Annuler", style: "cancel" },
-      { text: "Supprimer", style: "destructive", onPress: async () => {
-        try { await deleteProgram(id); await loadPrograms(); }
-        catch (error: any) { Alert.alert("Erreur", error.message); }
-      } },
+      { text: "Supprimer", style: "destructive", onPress: async () => { try { await deleteProgram(id); await loadPrograms(); } catch (error: any) { Alert.alert("Erreur", error.message); } } },
     ]);
   }
 
@@ -104,10 +66,13 @@ export default function Workout() {
 
       <Pressable onPress={() => router.push("/(app)/community-programs")} style={({ pressed }) => [styles.communityButton, pressed && styles.pressed]}>
         <View style={styles.communityIcon}><Compass size={21} color={Colors.primary} strokeWidth={2.4} /></View>
-        <View style={styles.communityCopy}>
-          <Text style={styles.communityTitle}>Programmes de la communauté</Text>
-          <Text style={styles.communitySubtitle}>Découvre et ajoute des programmes gratuits</Text>
-        </View>
+        <View style={styles.communityCopy}><Text style={styles.communityTitle}>Programmes de la communauté</Text><Text style={styles.communitySubtitle}>Découvre et ajoute des programmes gratuits</Text></View>
+        <Text style={styles.communityArrow}>›</Text>
+      </Pressable>
+
+      <Pressable onPress={() => router.push("/(app)/workout-tools")} style={({ pressed }) => [styles.toolsButton, pressed && styles.pressed]}>
+        <View style={styles.toolsIcon}><Wrench size={20} color={Colors.primary} strokeWidth={2.4} /></View>
+        <View style={styles.communityCopy}><Text style={styles.communityTitle}>Outils de musculation</Text><Text style={styles.communitySubtitle}>Échauffement intelligent + calculateur de disques</Text></View>
         <Text style={styles.communityArrow}>›</Text>
       </Pressable>
 
@@ -115,44 +80,16 @@ export default function Workout() {
       <Button title="CRÉER LE PROGRAMME" onPress={handleCreate} />
 
       <FlatList
-        style={{ marginTop: 25 }} data={programs} keyExtractor={(item) => item.id}
-        refreshing={loading} onRefresh={loadPrograms}
+        style={{ marginTop: 25 }} data={programs} keyExtractor={(item) => item.id} refreshing={loading} onRefresh={loadPrograms}
         renderItem={({ item }) => (
           <Card>
-            <TouchableOpacity onPress={() => router.push({ pathname: "/(app)/program/[id]", params: { id: item.id } })}>
-              <Text style={styles.program}>{item.name}</Text>
-            </TouchableOpacity>
-
+            <TouchableOpacity onPress={() => router.push({ pathname: "/(app)/program/[id]", params: { id: item.id } })}><Text style={styles.program}>{item.name}</Text></TouchableOpacity>
             {item.is_published ? (
-              <View style={styles.statusRow}>
-                <View style={styles.publishedStatus}>
-                  <Globe2 size={15} color={Colors.primary} strokeWidth={2.3} />
-                  <Text style={styles.publishedText}>Publié dans la communauté</Text>
-                </View>
-                <View style={styles.statusSpacer} />
-                <TouchableOpacity onPress={() => handleUnpublish(item)} disabled={publishingId === item.id}>
-                  <Text style={styles.unpublish}>{publishingId === item.id ? "Retrait…" : "Retirer"}</Text>
-                </TouchableOpacity>
-              </View>
+              <View style={styles.statusRow}><View style={styles.publishedStatus}><Globe2 size={15} color={Colors.primary} strokeWidth={2.3} /><Text style={styles.publishedText}>Publié dans la communauté</Text></View><View style={styles.statusSpacer} /><TouchableOpacity onPress={() => handleUnpublish(item)} disabled={publishingId === item.id}><Text style={styles.unpublish}>{publishingId === item.id ? "Retrait…" : "Retirer"}</Text></TouchableOpacity></View>
             ) : (
-              <View style={styles.statusRow}>
-                <View style={styles.privateStatus}>
-                  <LockKeyhole size={15} color={Colors.textSecondary} strokeWidth={2.3} />
-                  <Text style={styles.privateText}>Privé</Text>
-                </View>
-                <View style={styles.statusSpacer} />
-                <TouchableOpacity onPress={() => handlePublish(item)} disabled={publishingId === item.id}>
-                  <View style={styles.publishRow}>
-                    <Globe2 size={16} color={Colors.primary} strokeWidth={2.2} />
-                    <Text style={styles.publish}>{publishingId === item.id ? "Publication…" : "Publier dans la communauté"}</Text>
-                  </View>
-                </TouchableOpacity>
-              </View>
+              <View style={styles.statusRow}><View style={styles.privateStatus}><LockKeyhole size={15} color={Colors.textSecondary} strokeWidth={2.3} /><Text style={styles.privateText}>Privé</Text></View><View style={styles.statusSpacer} /><TouchableOpacity onPress={() => handlePublish(item)} disabled={publishingId === item.id}><View style={styles.publishRow}><Globe2 size={16} color={Colors.primary} strokeWidth={2.2} /><Text style={styles.publish}>{publishingId === item.id ? "Publication…" : "Publier dans la communauté"}</Text></View></TouchableOpacity></View>
             )}
-
-            <View style={styles.programActions}>
-              <TouchableOpacity onPress={() => handleDelete(item.id)}><Text style={styles.delete}>Supprimer</Text></TouchableOpacity>
-            </View>
+            <View style={styles.programActions}><TouchableOpacity onPress={() => handleDelete(item.id)}><Text style={styles.delete}>Supprimer</Text></TouchableOpacity></View>
           </Card>
         )}
         ListEmptyComponent={<Text style={styles.empty}>Aucun programme.</Text>}
@@ -167,8 +104,10 @@ const styles = StyleSheet.create({
   backButton: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", marginRight: 6, backgroundColor: Colors.surfaceLight },
   pressed: { opacity: 0.65, transform: [{ scale: 0.97 }] },
   title: { color: Colors.text, fontSize: 30, fontWeight: "800" },
-  communityButton: { flexDirection: "row", alignItems: "center", borderRadius: 18, padding: 14, marginBottom: 18, backgroundColor: Colors.surfaceLight, borderWidth: 1, borderColor: "#E4D9FF" },
+  communityButton: { flexDirection: "row", alignItems: "center", borderRadius: 18, padding: 14, marginBottom: 12, backgroundColor: Colors.surfaceLight, borderWidth: 1, borderColor: "#E4D9FF" },
+  toolsButton: { flexDirection: "row", alignItems: "center", borderRadius: 18, padding: 14, marginBottom: 18, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.primary },
   communityIcon: { width: 42, height: 42, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: "#FFFFFF" },
+  toolsIcon: { width: 42, height: 42, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: Colors.surfaceLight },
   communityCopy: { flex: 1, marginLeft: 12 },
   communityTitle: { color: Colors.text, fontSize: 15, fontWeight: "900" },
   communitySubtitle: { color: Colors.textSecondary, fontSize: 12, marginTop: 3 },
