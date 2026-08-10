@@ -45,6 +45,22 @@ export default function CoachNextSetCard({
       ? "CONSOLIDER"
       : "MAINTENIR";
 
+  const setQuality = isBelowTarget
+    ? "À renforcer"
+    : isAboveTarget && recoveryHigh
+      ? "Excellente"
+      : isAboveTarget || recoveryHigh
+        ? "Très solide"
+        : "Solide";
+
+  const setQualityMessage = isBelowTarget
+    ? `Encore ${Math.max(0, minReps - reps)} rep${Math.max(0, minReps - reps) > 1 ? "s" : ""} pour entrer dans ta zone.`
+    : isAboveTarget && recoveryHigh
+      ? "Zone haute atteinte avec une bonne récupération."
+      : recoveryLow
+        ? "Bonne exécution, mais on protège la récupération aujourd'hui."
+        : "La série est dans une zone productive.";
+
   const title = recoveryLow
     ? "On consolide aujourd'hui."
     : isAboveTarget && recoveryHigh
@@ -91,18 +107,20 @@ export default function CoachNextSetCard({
           const setNumber = index + 1;
           const isCompleted = setNumber < nextSet;
           const isCurrent = setNumber === nextSet;
-          return (
-            <View
-              key={setNumber}
-              style={[
-                styles.setDot,
-                isCompleted && styles.setDotCompleted,
-                isCurrent && styles.setDotCurrent,
-              ]}
-            />
-          );
+          return <View key={setNumber} style={[styles.setDot, isCompleted && styles.setDotCompleted, isCurrent && styles.setDotCurrent]} />;
         })}
       </View>
+
+      <View style={styles.qualityRow}>
+        <View style={styles.qualityCopy}>
+          <Text style={styles.qualityEyebrow}>QUALITÉ DE LA SÉRIE</Text>
+          <Text style={styles.qualityValue}>{setQuality}</Text>
+        </View>
+        <View style={styles.qualityScore}>
+          <Text style={styles.qualityScoreText}>{reps >= minReps ? "✓" : "!"}</Text>
+        </View>
+      </View>
+      <Text style={styles.qualityMessage}>{setQualityMessage}</Text>
 
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.message}>{message}</Text>
@@ -160,6 +178,13 @@ const styles = StyleSheet.create({
   setDot: { flex: 1, height: 4, borderRadius: 999, backgroundColor: Colors.border },
   setDotCompleted: { backgroundColor: Colors.primary + "65" },
   setDotCurrent: { backgroundColor: Colors.primary, height: 6 },
+  qualityRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 15 },
+  qualityCopy: { flex: 1 },
+  qualityEyebrow: { color: Colors.textSecondary, fontSize: 9, fontWeight: "900", letterSpacing: 1 },
+  qualityValue: { color: Colors.text, fontSize: 16, fontWeight: "900", marginTop: 3 },
+  qualityScore: { width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center", backgroundColor: Colors.primary + "18", borderWidth: 1, borderColor: Colors.primary + "35" },
+  qualityScoreText: { color: Colors.primary, fontSize: 15, fontWeight: "900" },
+  qualityMessage: { color: Colors.textSecondary, fontSize: 11, lineHeight: 16, marginTop: 4 },
   title: { color: Colors.text, fontSize: 17, fontWeight: "900", marginTop: 12 },
   message: { color: Colors.textSecondary, fontSize: 13, lineHeight: 19, marginTop: 6 },
   nextTarget: { marginTop: 14, borderRadius: 16, backgroundColor: Colors.primary + "12", borderWidth: 1, borderColor: Colors.primary + "35", padding: 14 },
