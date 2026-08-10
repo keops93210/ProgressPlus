@@ -29,23 +29,38 @@ export default function CoachNextSetCard({
   const recoveryLow = typeof recoveryScore === "number" && recoveryScore <= 2;
   const recoveryHigh = typeof recoveryScore === "number" && recoveryScore >= 4.2;
 
+  const nextWeight = recoveryLow
+    ? weight
+    : isAboveTarget && recoveryHigh
+      ? weight + 2.5
+      : weight;
+  const nextReps = recoveryLow
+    ? minReps
+    : isAboveTarget && recoveryHigh
+      ? minReps
+      : isBelowTarget
+        ? minReps
+        : Math.min(maxReps, reps + 1);
+
   const title = recoveryLow
     ? "On consolide aujourd'hui."
-    : isAboveTarget
-      ? "Très solide. On peut continuer."
-      : isBelowTarget
-        ? "On consolide avant de monter."
-        : "Bonne série. On continue proprement.";
+    : isAboveTarget && recoveryHigh
+      ? "Tu as gagné le droit de monter."
+      : isAboveTarget
+        ? "Très solide. On garde la charge."
+        : isBelowTarget
+          ? "On consolide avant de monter."
+          : "Bonne série. On continue proprement.";
 
   const message = recoveryLow
     ? `Ta récupération est basse. Garde ${weight} kg et vise au moins ${minReps} reps sans forcer.`
-    : isAboveTarget
-      ? recoveryHigh
-        ? `Tu as atteint ${maxReps} reps à ${weight} kg avec une bonne récupération. La prochaine série peut rester à cette charge.`
-        : `Tu as atteint le haut de la zone à ${weight} kg. Repars sur ${weight} kg pour la prochaine série.`
-      : isBelowTarget
-        ? `Reste à ${weight} kg et vise au moins ${minReps} reps sur la prochaine série.`
-        : `Objectif atteint à ${weight} kg. Essaie de reproduire ${reps} reps sur la prochaine série.`;
+    : isAboveTarget && recoveryHigh
+      ? `${maxReps} reps atteintes avec une bonne récupération. Progress+ augmente légèrement la charge pour la prochaine série.`
+      : isAboveTarget
+        ? `Tu as atteint le haut de la zone à ${weight} kg. On garde cette charge pour sécuriser la progression.`
+        : isBelowTarget
+          ? `La série est sous la zone. Reste à ${weight} kg et vise au moins ${minReps} reps.`
+          : `Objectif atteint à ${weight} kg. On cherche ${nextReps} reps sur la prochaine série.`;
 
   return (
     <View style={styles.card}>
@@ -65,6 +80,14 @@ export default function CoachNextSetCard({
 
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.message}>{message}</Text>
+
+      <View style={styles.nextTarget}>
+        <View style={styles.nextTargetCopy}>
+          <Text style={styles.nextTargetEyebrow}>PROCHAINE CIBLE</Text>
+          <Text style={styles.nextTargetValue}>{nextWeight} kg × {nextReps}</Text>
+          <Text style={styles.nextTargetHint}>Préparée automatiquement par Progress+</Text>
+        </View>
+      </View>
 
       <View style={styles.targetRow}>
         <View>
@@ -95,6 +118,11 @@ const styles = StyleSheet.create({
   setLabel: { color: Colors.textSecondary, fontSize: 10, fontWeight: "800", letterSpacing: 0.8 },
   title: { color: Colors.text, fontSize: 17, fontWeight: "900", marginTop: 12 },
   message: { color: Colors.textSecondary, fontSize: 13, lineHeight: 19, marginTop: 6 },
+  nextTarget: { marginTop: 14, borderRadius: 16, backgroundColor: Colors.primary + "12", borderWidth: 1, borderColor: Colors.primary + "35", padding: 14 },
+  nextTargetCopy: { alignItems: "center" },
+  nextTargetEyebrow: { color: Colors.primary, fontSize: 10, fontWeight: "900", letterSpacing: 1.2 },
+  nextTargetValue: { color: Colors.text, fontSize: 26, fontWeight: "900", marginTop: 4 },
+  nextTargetHint: { color: Colors.textSecondary, fontSize: 10, fontWeight: "600", marginTop: 3 },
   targetRow: { flexDirection: "row", alignItems: "center", marginTop: 14, paddingTop: 13, borderTopWidth: 1, borderTopColor: Colors.border },
   label: { color: Colors.textSecondary, fontSize: 10, fontWeight: "700", textTransform: "uppercase" },
   value: { color: Colors.text, fontSize: 15, fontWeight: "900", marginTop: 3 },
