@@ -8,9 +8,11 @@ interface WorkoutProgressCardProps {
   completedSets: number[];
   weight: number;
   reps: number;
+  lastWeight?: number | null;
+  lastReps?: number | null;
 }
 
-export default function WorkoutProgressCard({ totalSets, completedSets, weight, reps }: WorkoutProgressCardProps) {
+export default function WorkoutProgressCard({ totalSets, completedSets, weight, reps, lastWeight, lastReps }: WorkoutProgressCardProps) {
   const completedCount = completedSets.length;
   const currentSet = Math.min(totalSets, completedCount + 1);
   const progress = totalSets > 0 ? Math.min(1, completedCount / totalSets) : 0;
@@ -18,6 +20,10 @@ export default function WorkoutProgressCard({ totalSets, completedSets, weight, 
   const currentVolume = Math.max(0, weight) * Math.max(0, reps);
   const estimated1RM = weight > 0 && reps > 0 ? weight * (1 + reps / 30) : 0;
   const progressPercent = Math.round(progress * 100);
+  const hasPrevious = Number(lastWeight) > 0 && Number(lastReps) > 0;
+  const previousVolume = hasPrevious ? Number(lastWeight) * Number(lastReps) : 0;
+  const volumeDelta = hasPrevious ? currentVolume - previousVolume : 0;
+  const volumeDeltaPercent = hasPrevious && previousVolume > 0 ? Math.round((volumeDelta / previousVolume) * 100) : 0;
 
   return (
     <Card>
@@ -56,6 +62,19 @@ export default function WorkoutProgressCard({ totalSets, completedSets, weight, 
         </View>
       </View>
 
+      {hasPrevious && (
+        <View style={styles.comparisonBox}>
+          <View style={styles.comparisonCopy}>
+            <Text style={styles.comparisonEyebrow}>PAR RAPPORT À LA DERNIÈRE FOIS</Text>
+            <Text style={styles.comparisonText}>{lastWeight} kg × {lastReps} reps</Text>
+          </View>
+          <View style={[styles.deltaBadge, volumeDelta > 0 ? styles.deltaPositive : volumeDelta < 0 ? styles.deltaNegative : styles.deltaNeutral]}>
+            <Text style={styles.deltaValue}>{volumeDelta > 0 ? "+" : ""}{volumeDeltaPercent}%</Text>
+            <Text style={styles.deltaLabel}>volume</Text>
+          </View>
+        </View>
+      )}
+
       <View style={styles.setList}>
         {Array.from({ length: totalSets }).map((_, index) => {
           const setNumber = index + 1;
@@ -80,13 +99,9 @@ export default function WorkoutProgressCard({ totalSets, completedSets, weight, 
                 </Text>
               </View>
               {completed ? (
-                <View style={styles.doneBadge}>
-                  <Text style={styles.doneLabel}>FAIT</Text>
-                </View>
+                <View style={styles.doneBadge}><Text style={styles.doneLabel}>FAIT</Text></View>
               ) : current ? (
-                <View style={styles.currentBadge}>
-                  <Text style={styles.currentLabel}>GO</Text>
-                </View>
+                <View style={styles.currentBadge}><Text style={styles.currentLabel}>GO</Text></View>
               ) : upcoming ? (
                 <Text style={styles.upcomingLabel}>—</Text>
               ) : null}
@@ -100,15 +115,9 @@ export default function WorkoutProgressCard({ totalSets, completedSets, weight, 
           <Text style={styles.nextLabel}>PROCHAINE SÉRIE</Text>
           <Text style={styles.nextHint}>Garde cette cible et ajuste seulement si tes sensations l'exigent.</Text>
         </View>
-        <View style={styles.nextMetric}>
-          <Text style={styles.nextValue}>{weight}</Text>
-          <Text style={styles.nextUnit}>kg</Text>
-        </View>
+        <View style={styles.nextMetric}><Text style={styles.nextValue}>{weight}</Text><Text style={styles.nextUnit}>kg</Text></View>
         <View style={styles.nextDivider} />
-        <View style={styles.nextMetric}>
-          <Text style={styles.nextValue}>{reps}</Text>
-          <Text style={styles.nextUnit}>reps</Text>
-        </View>
+        <View style={styles.nextMetric}><Text style={styles.nextValue}>{reps}</Text><Text style={styles.nextUnit}>reps</Text></View>
       </View>
 
       <View style={styles.volumeRow}>
@@ -139,6 +148,16 @@ const styles = StyleSheet.create({
   summaryLabel: { color: Colors.textSecondary, fontSize: 8, fontWeight: "900", letterSpacing: 1 },
   summaryValue: { color: Colors.text, fontSize: 14, fontWeight: "900", marginTop: 4 },
   summaryMultiply: { color: Colors.primary },
+  comparisonBox: { marginTop: 12, padding: 12, borderRadius: 14, backgroundColor: Colors.surfaceLight, flexDirection: "row", alignItems: "center" },
+  comparisonCopy: { flex: 1 },
+  comparisonEyebrow: { color: Colors.textSecondary, fontSize: 8, fontWeight: "900", letterSpacing: 0.8 },
+  comparisonText: { color: Colors.text, fontSize: 13, fontWeight: "900", marginTop: 4 },
+  deltaBadge: { minWidth: 58, paddingHorizontal: 8, paddingVertical: 6, borderRadius: 9, alignItems: "center" },
+  deltaPositive: { backgroundColor: "rgba(46, 204, 113, 0.16)" },
+  deltaNegative: { backgroundColor: "rgba(231, 76, 60, 0.14)" },
+  deltaNeutral: { backgroundColor: Colors.background },
+  deltaValue: { color: Colors.text, fontSize: 12, fontWeight: "900" },
+  deltaLabel: { color: Colors.textSecondary, fontSize: 8, fontWeight: "800", marginTop: 1 },
   setList: { marginTop: 12, gap: 7 },
   setRow: { minHeight: 56, borderRadius: 15, paddingHorizontal: 10, flexDirection: "row", alignItems: "center", backgroundColor: Colors.background, borderWidth: 1, borderColor: "transparent" },
   setRowDone: { backgroundColor: Colors.surfaceLight },
