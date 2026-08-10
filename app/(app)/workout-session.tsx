@@ -25,7 +25,7 @@ type CoachLastSet = { weight: number; reps: number; nextSet: number; isPersonalR
 export default function WorkoutSessionScreen() {
   const { programId } = useLocalSearchParams<{ programId: string }>();
   const { user } = useAuth();
-  const { start: startRest } = useRestTimerStore();
+  const { start: startRest, active: restActive, add: addRest, remove: removeRest, skip: skipRest } = useRestTimerStore();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -36,6 +36,7 @@ export default function WorkoutSessionScreen() {
   const [currentSet, setCurrentSet] = useState(1);
   const [weight, setWeight] = useState(0);
   const [reps, setReps] = useState(8);
+  const [restSeconds, setRestSeconds] = useState(120);
   const [completedVolume, setCompletedVolume] = useState(0);
   const [completedTotalSets, setCompletedTotalSets] = useState(0);
   const [personalRecordsThisSession, setPersonalRecordsThisSession] = useState(0);
@@ -69,10 +70,10 @@ export default function WorkoutSessionScreen() {
         const session = await startWorkoutSession(userId, String(programId));
         if (cancelled) return;
         setSessionId(session.id);
-        setSessionStartedAt(new Date(session.started_at).getTime());
         const sessionWithSets = await getWorkoutSession(session.id);
         if (cancelled) return;
         const savedSets = (sessionWithSets?.workout_sets ?? []).filter((set: any) => set.completed !== false);
+        setSessionStartedAt(savedSets.length === 0 ? Date.now() : new Date(session.started_at).getTime());
         setCompletedVolume(savedSets.reduce((sum: number, set: any) => sum + Number(set.weight || 0) * Number(set.reps || 0), 0));
         setCompletedTotalSets(savedSets.length);
         if (sessionWithSets?.recovery_score != null) setRecoveryScore(Number(sessionWithSets.recovery_score));
@@ -107,6 +108,7 @@ export default function WorkoutSessionScreen() {
   useEffect(() => {
     if (!exercise || !userId || !checkInDone) return;
     let cancelled = false;
+    setRestSeconds(Math.max(15, exercise.rest_seconds || 120));
     async function loadExerciseData() {
       try {
         setLastPerformanceLoading(true);
@@ -119,7 +121,7 @@ export default function WorkoutSessionScreen() {
         setLastPerformance(performance);
         setRecommendation(nextRecommendation);
         if (nextRecommendation.action === "increase_weight") { setWeight(nextRecommendation.recommendedWeight); setReps(nextRecommendation.recommendedReps); }
-        else if (performance) { setWeight(performance.weight); setReps(Math.min(exercise.max_reps, Math.max(exercise.min_reps, performance.reps))); }
+        else if (performance) { setWeight(performance.weight); setReps(Math.min(exercise.max_reps, Math.max(1, performance.reps))); }
         else { setWeight(0); setReps(Math.min(8, exercise.max_reps)); }
       } catch (error) { console.log("EXERCISE PROGRESSION ERROR =", error); }
       finally { if (!cancelled) { setLastPerformanceLoading(false); setRecommendationLoading(false); } }
@@ -143,7 +145,7 @@ export default function WorkoutSessionScreen() {
 
   function formatTime(seconds: number) {
     const minutes = Math.floor(seconds / 60); const remainingSeconds = seconds % 60;
-    return minutes === 0 ? `${remainingSeconds}s` : `${minutes}m${remainingSeconds.toString().padStart(2, "0")}`;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
   }
 
   function formatWorkoutDuration(seconds: number) {
@@ -178,12 +180,12 @@ export default function WorkoutSessionScreen() {
         const nextSet = currentSet + 1; const nextTarget = getNextSetTarget(weight, reps);
         setCoachLastSet({ weight, reps, nextSet, isPersonalRecord: savedSet.isPersonalRecord });
         setWeight(nextTarget.weight); setReps(nextTarget.reps); setCurrentSet(nextSet);
-        await startRest(exercise.rest_seconds || 120); return;
+        await startRest(restSeconds); return;
       }
 
       if (currentExerciseIndex < exercises.length - 1) {
         setCoachLastSet(null); setCurrentExerciseIndex((previous) => previous + 1); setCurrentSet(1);
-        await startRest(exercise.rest_seconds || 120); return;
+        await startRest(restSeconds); return;
       }
 
       const duration = sessionStartedAt ? Math.max(0, Math.floor((Date.now() - sessionStartedAt) / 1000)) : 0;
@@ -209,7 +211,7 @@ export default function WorkoutSessionScreen() {
   function applyRecommendation() {
     if (!recommendation) return;
     if (recommendation.recommendedWeight > 0) setWeight(recommendation.recommendedWeight);
-    setReps(Math.min(exercise?.max_reps ?? recommendation.recommendedReps, Math.max(exercise?.min_reps ?? recommendation.recommendedReps, recommendation.recommendedReps)));
+    setReps(Math.min(exercise?.max_reps ?? recommendation.recommendedReps, Math.max(1, recommendation.recommendedReps)));
   }
 
   if (loading) return <SafeAreaView style={styles.container}><Header title="Chargement..." /></SafeAreaView>;
@@ -246,6 +248,8 @@ export default function WorkoutSessionScreen() {
     );
   }
 
+  const plannedRest = Math.max(15, restSeconds);
+
   return (
     <SafeAreaView style={styles.container}>
       <Header title={exercise?.exercises.name ?? "Aucun exercice"} subtitle={`Série ${currentSet} / ${totalSets}`} />
@@ -263,14 +267,26 @@ export default function WorkoutSessionScreen() {
         ) : null}
         {readinessMessage && <View style={styles.readiness}><Text style={styles.readinessText}>{readinessMessage}</Text></View>}
         {coachLastSet && exercise && <CoachNextSetCard weight={coachLastSet.weight} reps={coachLastSet.reps} minReps={exercise.min_reps} maxReps={exercise.max_reps} nextSet={coachLastSet.nextSet} totalSets={exercise.sets} isPersonalRecord={coachLastSet.isPersonalRecord} recoveryScore={recoveryScore} />}
-        <View style={styles.targetCard}><Text style={styles.targetTitle}>Objectif</Text><Text style={styles.targetValue}>{exercise ? `${exercise.min_reps}–${exercise.max_reps} répétitions` : "—"}</Text><Text style={styles.targetRest}>Repos : {formatTime(exercise?.rest_seconds || 120)}</Text></View>
+        <View style={styles.targetCard}>
+          <View style={styles.targetHeader}><Text style={styles.targetTitle}>Objectif</Text><Text style={styles.targetBadge}>{reps < (exercise?.min_reps ?? 1) ? "SOUS OBJECTIF" : "ZONE CIBLE"}</Text></View>
+          <Text style={styles.targetValue}>{exercise ? `${exercise.min_reps}–${exercise.max_reps} répétitions` : "—"}</Text>
+          <View style={styles.restRow}>
+            <View><Text style={styles.targetRestLabel}>Repos automatique</Text><Text style={styles.targetRestValue}>{formatTime(plannedRest)}</Text></View>
+            <View style={styles.restControls}>
+              <Pressable style={styles.restButton} onPress={() => { const next = Math.max(15, restSeconds - 15); setRestSeconds(next); if (restActive) void removeRest(15); }}><Text style={styles.restButtonText}>−15s</Text></Pressable>
+              <Pressable style={styles.restButtonPrimary} onPress={() => { setRestSeconds(restSeconds + 15); if (restActive) void addRest(15); }}><Text style={styles.restButtonPrimaryText}>+15s</Text></Pressable>
+              {restActive && <Pressable style={styles.restSkipButton} onPress={() => void skipRest()}><Text style={styles.restSkipText}>PASSER</Text></Pressable>}
+            </View>
+          </View>
+        </View>
         {!lastPerformanceLoading && lastPerformance && <LastPerformance weight={lastPerformance.weight} reps={lastPerformance.reps} />}
         {!recommendationLoading && recommendation && <View style={styles.recommendationCard}><View style={styles.recommendationHeader}><Text style={styles.recommendationEyebrow}>PROGRESSION+</Text><Text style={styles.recommendationBadge}>{recommendation.action === "increase_weight" ? "↑ POIDS" : recommendation.action === "increase_reps" ? "↑ REPS" : "→ CONSOLIDER"}</Text></View><Text style={styles.recommendationTitle}>{recommendation.action === "increase_weight" ? "Tu peux augmenter la charge 💪" : recommendation.action === "increase_reps" ? "On cherche encore des reps" : "On consolide la charge"}</Text><Text style={styles.recommendationMessage}>{recommendation.message}</Text>{recommendation.action !== "start" && <View style={styles.recommendationValues}><View><Text style={styles.recommendationLabel}>Prochaine cible</Text><Text style={styles.recommendationValue}>{recommendation.recommendedWeight > 0 ? `${recommendation.recommendedWeight} kg` : "—"}</Text></View><View><Text style={styles.recommendationLabel}>Reps</Text><Text style={styles.recommendationValue}>{recommendation.recommendedReps}</Text></View></View>}{recommendation.action !== "start" && <Text style={styles.recommendationAction} onPress={applyRecommendation}>UTILISER CETTE RECOMMANDATION</Text>}</View>}
         <WorkoutWeightCard weight={weight} onIncrease={() => setWeight((value) => value + 2.5)} onDecrease={() => setWeight((value) => Math.max(0, value - 2.5))} />
-        <WorkoutRepsCard reps={reps} onIncrease={() => setReps((value) => Math.min(exercise?.max_reps ?? value + 1, value + 1))} onDecrease={() => setReps((value) => Math.max(exercise?.min_reps ?? 1, value - 1))} />
+        <WorkoutRepsCard reps={reps} onIncrease={() => setReps((value) => Math.min(exercise?.max_reps ?? value + 1, value + 1))} onDecrease={() => setReps((value) => Math.max(1, value - 1))} />
+        {reps < (exercise?.min_reps ?? 1) && <View style={styles.belowTarget}><Text style={styles.belowTargetTitle}>Série écourtée</Text><Text style={styles.belowTargetText}>Tu peux terminer cette série à {reps} reps même si l'objectif était de {exercise?.min_reps}–{exercise?.max_reps}. Progress+ enregistrera la performance réelle.</Text></View>}
         <WorkoutProgressCard totalSets={totalSets} completedSets={completedSets} weight={weight} reps={reps} lastWeight={coachLastSet?.weight} lastReps={coachLastSet?.reps} />
       </ScrollView>
-      <BottomButton title={saving ? "ENREGISTREMENT..." : currentSet === totalSets ? currentExerciseIndex === exercises.length - 1 ? "TERMINER LA SÉANCE" : "EXERCICE SUIVANT" : "VALIDER LA SÉRIE"} onPress={validateSet} disabled={!exercise || saving} />
+      <BottomButton title={saving ? "ENREGISTREMENT..." : reps < (exercise?.min_reps ?? 1) ? "TERMINER LA SÉRIE" : currentSet === totalSets ? currentExerciseIndex === exercises.length - 1 ? "TERMINER LA SÉANCE" : "EXERCICE SUIVANT" : "VALIDER LA SÉRIE"} onPress={validateSet} disabled={!exercise || saving} />
     </SafeAreaView>
   );
 }
@@ -283,7 +299,8 @@ const styles = StyleSheet.create({
   workoutDurationCopy: { flex: 1 }, workoutDurationLabel: { color: Colors.textSecondary, fontSize: 9, fontWeight: "900", letterSpacing: 1.1 }, workoutDurationValue: { color: Colors.primary, fontSize: 25, fontWeight: "900", fontVariant: ["tabular-nums"], marginTop: 2 },
   workoutDurationMeta: { minWidth: 58, alignItems: "center", paddingLeft: 12, marginLeft: 8, borderLeftWidth: 1, borderLeftColor: Colors.border }, workoutDurationMetaValue: { color: Colors.text, fontSize: 16, fontWeight: "900", fontVariant: ["tabular-nums"] }, workoutDurationMetaLabel: { color: Colors.textSecondary, fontSize: 9, fontWeight: "700", marginTop: 2 },
   exerciseHero: { flexDirection: "row", alignItems: "center", padding: 12, borderRadius: 20, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border }, exerciseHeroPressed: { opacity: 0.75 }, exerciseImageWrap: { width: 82, height: 82, borderRadius: 16, overflow: "hidden", backgroundColor: Colors.surfaceLight }, exerciseImage: { width: "100%", height: "100%" }, exerciseImageFallback: { flex: 1, alignItems: "center", justifyContent: "center" }, exerciseImageFallbackText: { fontSize: 30 }, exerciseHeroCopy: { flex: 1, marginLeft: 13 }, exerciseHeroEyebrow: { color: Colors.primary, fontSize: 9, fontWeight: "900", letterSpacing: 1.2 }, exerciseHeroTitle: { color: Colors.text, fontSize: 17, lineHeight: 21, fontWeight: "900", marginTop: 4 }, exerciseHeroLink: { color: Colors.textMuted, fontSize: 11, fontWeight: "700", marginTop: 6 },
-  readiness: { padding: 14, borderRadius: 15, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.primary }, readinessText: { color: Colors.text, fontSize: 13, lineHeight: 19, fontWeight: "600" }, targetCard: { padding: 16, borderRadius: 16, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border }, targetTitle: { color: Colors.textSecondary, fontSize: 14, fontWeight: "600" }, targetValue: { color: Colors.text, fontSize: 22, fontWeight: "800", marginTop: 6 }, targetRest: { color: Colors.textSecondary, fontSize: 14, marginTop: 6 },
+  readiness: { padding: 14, borderRadius: 15, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.primary }, readinessText: { color: Colors.text, fontSize: 13, lineHeight: 19, fontWeight: "600" }, targetCard: { padding: 16, borderRadius: 16, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border }, targetHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" }, targetTitle: { color: Colors.textSecondary, fontSize: 14, fontWeight: "600" }, targetBadge: { color: Colors.primary, fontSize: 10, fontWeight: "900", letterSpacing: 0.8 }, targetValue: { color: Colors.text, fontSize: 22, fontWeight: "800", marginTop: 6 }, targetRestLabel: { color: Colors.textSecondary, fontSize: 12, fontWeight: "600" }, targetRestValue: { color: Colors.text, fontSize: 20, fontWeight: "900", marginTop: 2, fontVariant: ["tabular-nums"] }, restRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: Colors.border }, restControls: { flexDirection: "row", gap: 7 }, restButton: { minHeight: 38, paddingHorizontal: 11, borderRadius: 11, backgroundColor: Colors.background, borderWidth: 1, borderColor: Colors.border, alignItems: "center", justifyContent: "center" }, restButtonText: { color: Colors.text, fontSize: 12, fontWeight: "800" }, restButtonPrimary: { minHeight: 38, paddingHorizontal: 11, borderRadius: 11, backgroundColor: Colors.primary, alignItems: "center", justifyContent: "center" }, restButtonPrimaryText: { color: "#FFFFFF", fontSize: 12, fontWeight: "900" }, restSkipButton: { minHeight: 38, paddingHorizontal: 12, borderRadius: 11, backgroundColor: Colors.text, alignItems: "center", justifyContent: "center" }, restSkipText: { color: "#FFFFFF", fontSize: 11, fontWeight: "900", letterSpacing: 0.5 },
+  belowTarget: { padding: 14, borderRadius: 15, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.primary }, belowTargetTitle: { color: Colors.primary, fontSize: 13, fontWeight: "900" }, belowTargetText: { color: Colors.textSecondary, fontSize: 13, lineHeight: 19, marginTop: 5 },
   recommendationCard: { padding: 18, borderRadius: 18, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.primary }, recommendationHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" }, recommendationEyebrow: { color: Colors.primary, fontSize: 12, fontWeight: "900", letterSpacing: 1 }, recommendationBadge: { color: Colors.textSecondary, fontSize: 11, fontWeight: "800" }, recommendationTitle: { color: Colors.text, fontSize: 20, fontWeight: "800", marginTop: 10 }, recommendationMessage: { color: Colors.textSecondary, fontSize: 14, lineHeight: 20, marginTop: 7 }, recommendationValues: { flexDirection: "row", gap: 40, marginTop: 16, paddingTop: 14, borderTopWidth: 1, borderTopColor: Colors.border }, recommendationLabel: { color: Colors.textSecondary, fontSize: 12 }, recommendationValue: { color: Colors.text, fontSize: 22, fontWeight: "800", marginTop: 3 }, recommendationAction: { color: Colors.primary, fontSize: 12, fontWeight: "900", marginTop: 16, letterSpacing: 0.5 },
   completedScroll: { flex: 1 }, completedScreen: { alignItems: "center", paddingHorizontal: 18, paddingTop: 24, paddingBottom: 40 }, completedIcon: { width: 78, height: 78, borderRadius: 39, backgroundColor: Colors.primary, alignItems: "center", justifyContent: "center", marginBottom: 24 }, completedIconText: { color: "#FFFFFF", fontSize: 42, fontWeight: "900" }, completedEyebrow: { color: Colors.primary, fontSize: 12, fontWeight: "900", letterSpacing: 1.8 }, completedTitle: { color: Colors.text, fontSize: 34, fontWeight: "900", marginTop: 6 }, completedText: { color: Colors.textSecondary, fontSize: 15, lineHeight: 22, textAlign: "center", marginTop: 10, maxWidth: 330, marginBottom: 20 },
   completedStats: { width: "100%", flexDirection: "row", alignItems: "center", justifyContent: "space-around", marginTop: 20, paddingVertical: 20, borderRadius: 20, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border }, completedStat: { flex: 1, alignItems: "center" }, completedStatValue: { color: Colors.text, fontSize: 21, fontWeight: "900" }, completedStatLabel: { color: Colors.textSecondary, fontSize: 11, marginTop: 4 }, completedDivider: { width: 1, height: 34, backgroundColor: Colors.border }, completedButton: { width: "100%", minHeight: 56, borderRadius: 18, backgroundColor: Colors.primary, alignItems: "center", justifyContent: "center", marginTop: 24 }, completedButtonText: { color: "#FFFFFF", fontSize: 14, fontWeight: "900", letterSpacing: 0.5 },
