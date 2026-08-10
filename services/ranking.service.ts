@@ -47,12 +47,23 @@ export async function getRankingProfile(userId: string): Promise<RankingProfile>
   return existing as RankingProfile;
 }
 
-export function calculateWorkoutPoints(input: { volume: number; totalSets: number; personalRecords?: number; consistencyBonus?: number; }) {
-  const volumePoints = Math.min(100, Math.floor(Math.max(0, input.volume) / 500));
-  const setPoints = Math.min(60, Math.max(0, input.totalSets) * 2);
+export function calculateWorkoutPoints(input: {
+  volume: number;
+  totalSets: number;
+  personalRecords?: number;
+  consistencyBonus?: number;
+  qualityScore?: number;
+  goalCompleted?: boolean;
+}) {
+  // Le volume reste récompensé, mais avec un rendement décroissant : soulever plus lourd
+  // ne doit pas écraser la régularité, la qualité et la progression personnelle.
+  const volumePoints = Math.min(45, Math.floor(Math.log10(Math.max(0, input.volume) + 1) * 12));
+  const setPoints = Math.min(35, Math.max(0, input.totalSets) * 1.5);
   const consistencyBonus = Math.max(0, Math.min(25, input.consistencyBonus ?? 0));
-  const prBonus = Math.min(100, Math.max(0, input.personalRecords ?? 0) * 25);
-  return volumePoints + setPoints + consistencyBonus + prBonus;
+  const qualityPoints = Math.min(40, Math.max(0, input.qualityScore ?? 0) * 0.4);
+  const prBonus = Math.min(50, Math.max(0, input.personalRecords ?? 0) * 12);
+  const goalBonus = input.goalCompleted ? 15 : 0;
+  return Math.round(volumePoints + setPoints + consistencyBonus + qualityPoints + prBonus + goalBonus);
 }
 
 function dateKey(value: string | Date) {
@@ -84,9 +95,14 @@ export async function calculateStreak(userId: string) {
   return { current, best };
 }
 
-export async function awardWorkoutPoints(userId: string, input: { volume: number; totalSets: number; personalRecords?: number; sessionId?: string; }) {
-  // Le caller peut fournir l'ID de session. Sinon, on récupère la dernière séance
-  // terminée : cette fonction est appelée immédiatement après sa finalisation.
+export async function awardWorkoutPoints(userId: string, input: {
+  volume: number;
+  totalSets: number;
+  personalRecords?: number;
+  sessionId?: string;
+  qualityScore?: number;
+  goalCompleted?: boolean;
+}) {
   let sessionId = input.sessionId;
   if (!sessionId) {
     const { data: latestSession, error: latestSessionError } = await supabase
@@ -101,7 +117,6 @@ export async function awardWorkoutPoints(userId: string, input: { volume: number
     sessionId = latestSession?.id ?? undefined;
   }
 
-  // Une séance terminée ne doit jamais pouvoir rapporter deux fois les mêmes points.
   if (sessionId) {
     const { data: existingEvent, error: existingEventError } = await supabase
       .from("progress_score_events")
@@ -119,18 +134,35 @@ export async function awardWorkoutPoints(userId: string, input: { volume: number
 
   const profile = await getRankingProfile(userId);
   const streak = await calculateStreak(userId);
-  const points = calculateWorkoutPoints({ ...input, consistencyBonus: Math.min(25, Math.max(0, streak.current * 5)) });
+  const points = calculateWorkoutPoints({
+    ...input,
+    consistencyBonus: Math.min(25, Math.max(0, streak.current * 5)),
+  });
   const nextScore = profile.score + points;
   const nextRank = [...RANKS].reverse().find((rank) => nextScore >= rank.min) ?? RANKS[0];
 
-  const { data, error } = await supabase.from("progress_profiles").update({ score: nextScore, rank: nextRank.name, season_points: profile.season_points + points, streak_days: streak.current, updated_at: new Date().toISOString() }).eq("user_id", userId).select().single();
+  const { data, error } = await supabase.from("progress_profiles").update({
+    score: nextScore,
+    rank: nextRank.name,
+    season_points: profile.season_points + points,
+    streak_days: streak.current,
+    updated_at: new Date().toISOString(),
+  }).eq("user_id", userId).select().single();
   if (error) throw error;
 
   const { error: eventError } = await supabase.from("progress_score_events").insert({
     user_id: userId,
     event_type: "workout_completed",
     points,
-    metadata: { session_id: sessionId ?? null, volume: input.volume, total_sets: input.totalSets, personal_records: input.personalRecords ?? 0, streak_days: streak.current },
+    metadata: {
+      session_id: sessionId ?? null,
+      volume: input.volume,
+      total_sets: input.totalSets,
+      personal_records: input.personalRecords ?? 0,
+      quality_score: input.qualityScore ?? null,
+      goal_completed: input.goalCompleted ?? false,
+      streak_days: streak.current,
+    },
   });
   if (eventError) throw eventError;
 
