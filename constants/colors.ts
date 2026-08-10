@@ -1,27 +1,27 @@
 const Colors = {
-  // Progress+ brand palette — graphite + orange
-  // Orange drives action and motivation; green rewards progress; red is reserved for intensity/alerts.
-  background: "#101114",
-  surface: "#181A1F",
-  surfaceLight: "#22252B",
-  surfaceElevated: "#272A31",
+  // Progress+ brand palette — premium electric violet + graphite
+  // Violet drives action and identity; green rewards progress; red is reserved for intensity/alerts.
+  background: "#0D0E12",
+  surface: "#17181E",
+  surfaceLight: "#202129",
+  surfaceElevated: "#272833",
 
-  primary: "#FF6B00",
-  primaryDark: "#E85F00",
-  primaryLight: "#FF8A33",
-  primarySoft: "#3A2415",
+  primary: "#8B5CF6",
+  primaryDark: "#7C3AED",
+  primaryLight: "#A78BFA",
+  primarySoft: "#241B3A",
 
   success: "#22C55E",
   warning: "#F59E0B",
-  danger: "#EF4444",
+  danger: "#F43F5E",
 
-  text: "#F5F5F5",
-  textSecondary: "#B5B7BD",
-  textMuted: "#7F838C",
+  text: "#F5F5F7",
+  textSecondary: "#B5B7C2",
+  textMuted: "#7F8290",
   textOnPrimary: "#FFFFFF",
 
-  border: "#2E3239",
-  borderStrong: "#3A3E46",
+  border: "#2B2C36",
+  borderStrong: "#3A3B48",
 };
 
 export default Colors;
