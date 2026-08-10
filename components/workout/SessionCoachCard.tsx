@@ -11,7 +11,7 @@ const TONE = {
   deload: { color: "#F43F5E", icon: "♥" },
 } as const;
 
-export default function SessionCoachCard({ decision }: Props) {
+export function SessionCoachCard({ decision }: Props) {
   const tone = TONE[decision.tone];
   return (
     <View style={styles.card}>
@@ -28,6 +28,8 @@ export default function SessionCoachCard({ decision }: Props) {
     </View>
   );
 }
+
+export default SessionCoachCard;
 
 const styles = StyleSheet.create({
   card: { backgroundColor: "#17181E", borderRadius: 20, padding: 18, borderWidth: 1, borderColor: "#252731", gap: 16 },
