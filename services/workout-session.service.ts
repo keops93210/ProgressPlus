@@ -64,8 +64,40 @@ export async function getLastPerformance(userId: string | null, exerciseId: stri
   return { weight: Number(data.weight) || 0, reps: Number(data.reps) || 0 };
 }
 
-export interface ProgressionRecommendation { action: "increase_weight" | "keep_weight" | "increase_reps" | "start"; currentWeight: number; recommendedWeight: number; currentReps: number; recommendedReps: number; minReps: number; maxReps: number; completedSets: number; message: string; }
+export interface ProgressionRecommendation { action: "increase_weight" | "keep_weight" | "increase_reps" | "start"; currentWeight: number; recommendedWeight: number; currentReps: number; recommendedReps: number; minReps: number; maxReps: number; completedSets: number; message: string; trend?: "up" | "stable" | "down"; trendPercent?: number; }
 type ProgressionSet = { weight: number; reps: number; set_number: number };
+type SessionSummary = { averageReps: number; averageVolume: number; weight: number; estimated1rm: number; completedSets: number };
+
+async function getRecentExerciseSessions(userId: string, exerciseId: string, limit = 3): Promise<SessionSummary[]> {
+  const { data: sessions, error: sessionsError } = await supabase
+    .from("workout_sets")
+    .select("session_id, weight, reps, workout_sessions!inner(user_id, finished_at)")
+    .eq("exercise_id", exerciseId)
+    .eq("workout_sessions.user_id", userId)
+    .not("workout_sessions.finished_at", "is", null)
+    .order("created_at", { ascending: false });
+  if (sessionsError) throw sessionsError;
+
+  const grouped = new Map<string, ProgressionSet[]>();
+  for (const row of sessions ?? []) {
+    const sessionId = String(row.session_id);
+    const list = grouped.get(sessionId) ?? [];
+    list.push({ weight: Number(row.weight) || 0, reps: Number(row.reps) || 0, set_number: list.length + 1 });
+    grouped.set(sessionId, list);
+    if (grouped.size >= limit && list.length > 0) {
+      // Keep collecting rows belonging to the sessions already discovered.
+      continue;
+    }
+  }
+
+  return Array.from(grouped.values()).slice(0, limit).map((sets) => {
+    const averageReps = sets.reduce((sum, set) => sum + set.reps, 0) / Math.max(1, sets.length);
+    const averageVolume = sets.reduce((sum, set) => sum + set.weight * set.reps, 0);
+    const weight = sets[0]?.weight ?? 0;
+    const estimated1rm = Math.max(...sets.map((set) => set.weight * (1 + set.reps / 30)), 0);
+    return { averageReps, averageVolume, weight, estimated1rm, completedSets: sets.length };
+  });
+}
 
 export async function getProgressionRecommendation(userId: string | null, exerciseId: string, minReps: number, maxReps: number, plannedSets: number): Promise<ProgressionRecommendation> {
   if (!userId) throw new Error("Utilisateur non connecté.");
@@ -85,27 +117,35 @@ export async function getProgressionRecommendation(userId: string | null, exerci
   const topSetRatio = topSetCount / sets.length;
   const consistency = Math.max(0, 1 - (Math.max(...sets.map((set) => set.reps)) - weakestReps) / Math.max(1, maxReps));
   const allAtTop = sets.length >= plannedSets && topSetCount === sets.length;
+  const recentSessions = await getRecentExerciseSessions(userId, exerciseId, 3);
+  const latestSummary = recentSessions[0];
+  const previousSummary = recentSessions[1];
+  const trendPercent = previousSummary && previousSummary.averageVolume > 0
+    ? Math.round(((latestSummary.averageVolume - previousSummary.averageVolume) / previousSummary.averageVolume) * 100)
+    : 0;
+  const trend: "up" | "stable" | "down" = trendPercent >= 3 ? "up" : trendPercent <= -3 ? "down" : "stable";
+  const trendSuffix = trend === "up" ? ` Ta performance monte de ${Math.abs(trendPercent)}% sur le volume.` : trend === "down" ? ` Le volume est en baisse de ${Math.abs(trendPercent)}% : on consolide plutôt que de forcer.` : " Ta performance est stable : on cherche une petite progression propre.";
 
-  if (allAtTop && currentWeight > 0) {
+  if (allAtTop && currentWeight > 0 && trend !== "down") {
     const recommendedWeight = currentWeight + 2.5;
-    return { action: "increase_weight", currentWeight, recommendedWeight, currentReps: Math.round(averageReps), recommendedReps: minReps, minReps, maxReps, completedSets: sets.length, message: `Toutes tes séries sont à ${maxReps} reps. Tu es prêt pour ${recommendedWeight} kg. Repars à ${minReps} reps et reconstruis.` };
+    return { action: "increase_weight", currentWeight, recommendedWeight, currentReps: Math.round(averageReps), recommendedReps: minReps, minReps, maxReps, completedSets: sets.length, trend, trendPercent, message: `Toutes tes séries sont à ${maxReps} reps. Tu es prêt pour ${recommendedWeight} kg.${trendSuffix}` };
   }
 
   if (currentWeight > 0 && weakestReps < minReps) {
-    return { action: "keep_weight", currentWeight, recommendedWeight: currentWeight, currentReps: Math.round(averageReps), recommendedReps: minReps, minReps, maxReps, completedSets: sets.length, message: `La série la plus faible est sous ${minReps} reps. Garde ${currentWeight} kg jusqu'à stabiliser toutes tes séries dans la zone.` };
+    return { action: "keep_weight", currentWeight, recommendedWeight: currentWeight, currentReps: Math.round(averageReps), recommendedReps: minReps, minReps, maxReps, completedSets: sets.length, trend, trendPercent, message: `La série la plus faible est sous ${minReps} reps. Garde ${currentWeight} kg jusqu'à stabiliser toutes tes séries.${trendSuffix}` };
   }
 
   if (currentWeight > 0 && topSetRatio >= 0.75 && consistency >= 0.75) {
     const recommendedReps = Math.min(maxReps, Math.round(averageReps) + 1);
-    return { action: recommendedReps >= maxReps ? "keep_weight" : "increase_reps", currentWeight, recommendedWeight: currentWeight, currentReps: Math.round(averageReps), recommendedReps, minReps, maxReps, completedSets: sets.length, message: `Très bonne maîtrise à ${currentWeight} kg. Vise ${recommendedReps} reps avec une exécution propre sur la prochaine séance.` };
+    return { action: recommendedReps >= maxReps ? "keep_weight" : "increase_reps", currentWeight, recommendedWeight: currentWeight, currentReps: Math.round(averageReps), recommendedReps, minReps, maxReps, completedSets: sets.length, trend, trendPercent, message: `Très bonne maîtrise à ${currentWeight} kg. Vise ${recommendedReps} reps avec une exécution propre.${trendSuffix}` };
   }
 
   if (averageReps >= minReps && currentWeight > 0) {
     const recommendedReps = Math.min(maxReps, Math.max(minReps, Math.round(averageReps) + 1));
-    return { action: "increase_reps", currentWeight, recommendedWeight: currentWeight, currentReps: Math.round(averageReps), recommendedReps, minReps, maxReps, completedSets: sets.length, message: `Garde ${currentWeight} kg. Cherche ${recommendedReps} reps sans sacrifier l'amplitude ni la technique.` };
+    return { action: "increase_reps", currentWeight, recommendedWeight: currentWeight, currentReps: Math.round(averageReps), recommendedReps, minReps, maxReps, completedSets: sets.length, trend, trendPercent, message: `Garde ${currentWeight} kg. Cherche ${recommendedReps} reps sans sacrifier l'amplitude ni la technique.${trendSuffix}` };
   }
 
-  return { action: "keep_weight", currentWeight, recommendedWeight: currentWeight, currentReps: Math.round(averageReps), recommendedReps: Math.max(minReps, Math.round(averageReps)), minReps, maxReps, completedSets: sets.length, message: `Garde ${currentWeight} kg et consolide ta technique dans la zone ${minReps}–${maxReps} reps.` };
+  return { action: "keep_weight", currentWeight, recommendedWeight: currentWeight, currentReps: Math.round(averageReps), recommendedReps: Math.max(minReps, Math.round(averageReps)), minReps, maxReps, completedSets: sets.length, trend, trendPercent, message: `Garde ${currentWeight} kg et consolide ta technique dans la zone ${minReps}–${maxReps} reps.${trendSuffix}` };
 }
 
 export interface PersonalRecordItem { id: string; exercise_id: string; weight: number; reps: number; estimated_1rm: number | null; created_at: string | null; exercises: { name: string } | null; }
