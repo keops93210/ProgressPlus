@@ -47,6 +47,7 @@ export type LiveSetState = {
   trendPercent?: number | null;
   recentMisses?: number;
   consecutiveHardSets?: number;
+  baseRestSeconds?: number;
 };
 
 export type LiveSetDecision = ProgressionDecision & {
@@ -139,5 +140,6 @@ export function getLiveSetDecision(state: LiveSetState): LiveSetDecision {
   const decision = getProgressionDecision({ weight: state.weight, reps: state.reps, rir: state.rir, minReps: state.minReps, maxReps: state.maxReps, readiness: state.readiness, trendPercent: state.trendPercent, recentMisses: state.recentMisses, recentSessions: 3, consecutiveHardSets: state.consecutiveHardSets, fatigueTrend: state.consecutiveHardSets && state.consecutiveHardSets >= 3 ? "rising" : "stable" });
   const nextSetNumber = Math.min(state.plannedSets, state.setNumber + 1);
   const shouldRest = state.setNumber < state.plannedSets || state.completedSets < state.plannedSets;
-  return { ...decision, nextSetNumber, shouldRest, suggestedRestSeconds: getSuggestedRestSeconds(state.rir, 120, state.readiness) };
+  const baseRestSeconds = Math.max(30, state.baseRestSeconds ?? 120);
+  return { ...decision, nextSetNumber, shouldRest, suggestedRestSeconds: getSuggestedRestSeconds(state.rir, baseRestSeconds, state.readiness) };
 }
