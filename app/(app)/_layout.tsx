@@ -1,5 +1,5 @@
 import { Tabs } from "expo-router";
-import { ChartColumn, Dumbbell, House, Trophy, User } from "lucide-react-native";
+import { ChartColumn, Dumbbell, House, Ruler, Trophy, User } from "lucide-react-native";
 
 import Colors from "@/constants/colors";
 
@@ -22,6 +22,7 @@ export default function AppLayout() {
       <Tabs.Screen name="home" options={{ title: "Accueil", tabBarIcon: ({ color, size }) => <House color={color} size={size} /> }} />
       <Tabs.Screen name="workout" options={{ title: "Séance", tabBarIcon: ({ color, size }) => <Dumbbell color={color} size={size} /> }} />
       <Tabs.Screen name="progress" options={{ title: "Stats", tabBarIcon: ({ color, size }) => <ChartColumn color={color} size={size} /> }} />
+      <Tabs.Screen name="body-progress" options={{ title: "Corps", tabBarIcon: ({ color, size }) => <Ruler color={color} size={size} /> }} />
       <Tabs.Screen name="ranking" options={{ title: "Classement", tabBarIcon: ({ color, size }) => <Trophy color={color} size={size} /> }} />
       <Tabs.Screen name="profile" options={{ title: "Profil", tabBarIcon: ({ color, size }) => <User color={color} size={size} /> }} />
       <Tabs.Screen name="program" options={{ href: null }} />
