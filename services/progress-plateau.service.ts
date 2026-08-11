@@ -1,0 +1,2 @@
+export type PlateauPoint={date:string;value:number};
+export function detectPlateau(points:PlateauPoint[], tolerance=0.01){const sorted=[...points].sort((a,b)=>new Date(a.date).getTime()-new Date(b.date).getTime());if(sorted.length<4)return{plateau:false,weeks:0};const first=sorted[0].value,last=sorted[sorted.length-1].value;const delta=Math.abs(last-first);const plateau=delta<=tolerance*Math.max(Math.abs(first),1);return{plateau,weeks:sorted.length,delta:Number((last-first).toFixed(2))};}
