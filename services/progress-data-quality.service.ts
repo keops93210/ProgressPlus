@@ -1,0 +1,2 @@
+export type ProgressData={workouts:number; measurements:number; recoveryEntries:number; performanceEntries:number};
+export function getProgressDataQuality(data:ProgressData){const checks=[data.workouts>0,data.measurements>0,data.recoveryEntries>0,data.performanceEntries>0];const score=Math.round(checks.filter(Boolean).length/checks.length*100);return{score,missing:checks.map((ok,i)=>ok?null:["entraînements","mensurations","récupération","performances"][i]).filter(Boolean) as string[],level:score>=75?"good" as const:score>=50?"partial" as const:"low" as const};}
