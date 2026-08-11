@@ -17,7 +17,7 @@ export type BodyMeasurement = {
   notes: string | null;
 };
 
-export type BodyMeasurementInput = Omit<BodyMeasurement, "id" | "measured_at"> & { measured_at?: string };
+export type BodyMeasurementInput = Partial<Omit<BodyMeasurement, "id" | "measured_at">> & { measured_at?: string };
 
 export async function getBodyMeasurements(userId: string): Promise<BodyMeasurement[]> {
   const { data, error } = await supabase.from("body_measurements").select("*").eq("user_id", userId).order("measured_at", { ascending: false });
