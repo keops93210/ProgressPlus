@@ -9,6 +9,9 @@ import Colors from "@/constants/colors";
 import { useAuth } from "@/contexts/AuthContext";
 import { getHomeData } from "@/services/home.service";
 import { getRankProgress } from "@/services/ranking.service";
+import { GlobalProgressHero } from "@/components/home/GlobalProgressHero";
+import { WeeklyTargetCard } from "@/components/home/WeeklyTargetCard";
+import { BodySnapshotCard } from "@/components/home/BodySnapshotCard";
 
 function Metric({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
   return (
@@ -86,6 +89,10 @@ export default function HomeScreen() {
   const trendPositive = hasComparison && volumeChange > 0;
   const trendNegative = hasComparison && volumeChange < 0;
   const readinessColor = coachDecision.tone === "ready" ? Colors.success : coachDecision.tone === "caution" ? Colors.danger : Colors.primary;
+  const globalScore = data?.globalScore ?? { score: null, label: "Pas assez de données", confidence: 0, available: 0, missing: [] as string[] };
+  const weeklyTarget = data?.consistency ?? { currentWeek: 0, targetPerWeek: 4, completion: 0, successfulWeeks: 0 };
+  const currentBody = data?.body?.current;
+  const bodyDelta = data?.body?.delta as { waist_cm?: number | null } | null | undefined;
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -101,11 +108,21 @@ export default function HomeScreen() {
           <View style={styles.levelBottom}><Text style={styles.levelSmall}>{rankProgress?.next ? `${rankProgress.pointsToNext} pts avant ${rankProgress.next.name}` : "Rang maximum atteint"}</Text><Text style={styles.levelSmall}>{Math.round((rankProgress?.percent ?? 0) * 100)}%</Text></View>
         </TouchableOpacity>
 
+        <GlobalProgressHero result={globalScore} onPress={() => router.push("/(app)/progress")} />
+
         <SectionHeader title="Coach Progress+" />
         <TouchableOpacity style={[styles.coachCard, { borderColor: readinessColor }]} activeOpacity={0.9} onPress={() => program && router.push({ pathname: "/(app)/program/[id]", params: { id: program.id } })}>
           <View style={[styles.coachIcon, { borderColor: readinessColor }]}><Sparkles color={readinessColor} size={22} /></View>
           <View style={styles.coachContent}><View style={styles.coachEyebrowRow}><Text style={[styles.coachEyebrow, { color: readinessColor }]}>{coachDecision.eyebrow}</Text><View style={[styles.statusDot, { backgroundColor: readinessColor }]} /></View><Text style={styles.coachTitle}>{coachDecision.title}</Text><Text style={styles.coachMessage}>{coachDecision.message}</Text><View style={styles.coachAction}><Text style={[styles.coachActionText, { color: readinessColor }]}>{coachDecision.action}</Text><ChevronRight color={readinessColor} size={16} /></View></View>
         </TouchableOpacity>
+
+        <SectionHeader title="Cette semaine" />
+        <View style={styles.twoColumns}>
+          <WeeklyTargetCard completed={weeklyTarget.currentWeek} target={weeklyTarget.targetPerWeek} />
+          <TouchableOpacity style={styles.statCard} onPress={() => router.push("/(app)/ranking")}>
+            <Trophy color={Colors.primary} size={21} /><Text style={styles.statBig}>#{data?.position ?? "—"}</Text><Text style={styles.statLabel}>classement global</Text>
+          </TouchableOpacity>
+        </View>
 
         <SectionHeader title="Ton programme" />
         {program ? <TouchableOpacity style={styles.workoutCard} activeOpacity={0.9} onPress={() => router.push({ pathname: "/(app)/program/[id]", params: { id: program.id } })}><View style={styles.workoutIcon}><Activity color={Colors.primary} size={28} /></View><View style={styles.workoutInfo}><Text style={styles.workoutType}>{program.name}</Text><Text style={styles.workoutName} numberOfLines={2}>{program.description || "Programme personnalisé"}</Text><Text style={styles.workoutMeta}>Appuie pour voir les exercices et commencer</Text></View><View style={styles.startCircle}><ChevronRight color="#FFFFFF" size={24} /></View></TouchableOpacity> : <TouchableOpacity style={styles.emptyProgram} onPress={() => router.push("/(app)/workout")}><Activity color={Colors.primary} size={24} /><View style={{ flex: 1 }}><Text style={styles.emptyProgramTitle}>Crée ton premier programme</Text><Text style={styles.emptyProgramText}>Ajoute tes exercices, séries, reps et temps de repos.</Text></View><ChevronRight color={Colors.primary} size={20} /></TouchableOpacity>}
@@ -114,7 +131,7 @@ export default function HomeScreen() {
         <View style={styles.recoveryCard}><Metric icon={Moon} label="Sommeil" value={formatScore(recovery?.sleep_score)} /><View style={styles.divider} /><Metric icon={Zap} label="Énergie" value={formatScore(recovery?.energy_score)} /><View style={styles.divider} /><Metric icon={Smile} label="Humeur" value={formatScore(recovery?.mood_score)} /></View>
         <Text style={styles.recoveryHint}>{recovery ? `Récupération globale : ${Number(recovery.recovery_score).toLocaleString("fr-FR")}/5` : "Ton prochain check-in apparaîtra ici."}</Text>
 
-        <View style={styles.twoColumns}><View style={styles.statCard}><Flame color={Colors.primary} size={21} /><Text style={styles.statBig}>{ranking?.streak_days ?? 0}</Text><Text style={styles.statLabel}>jours de série</Text></View><TouchableOpacity style={styles.statCard} onPress={() => router.push("/(app)/ranking")}><Trophy color={Colors.primary} size={21} /><Text style={styles.statBig}>#{data?.position ?? "—"}</Text><Text style={styles.statLabel}>classement global</Text></TouchableOpacity></View>
+        <BodySnapshotCard weight={currentBody?.weight_kg ?? null} waist={currentBody?.waist_cm ?? null} waistDelta={bodyDelta?.waist_cm ?? null} onPress={() => router.push("/(app)/body-progress")} />
 
         <SectionHeader title="Progression" action="Voir les stats" />
         <TouchableOpacity style={styles.progressCard} onPress={() => router.push("/(app)/progress")}>
