@@ -152,9 +152,10 @@ export async function getProgressionRecommendation(userId: string | null, exerci
   const trendSuffix = trend === "up" ? ` Ta force estimée monte de ${Math.abs(trendPercent)}%.` : trend === "down" ? ` Ta force estimée baisse de ${Math.abs(trendPercent)}% : on consolide plutôt que de forcer.` : " Ta force estimée est stable : on cherche une petite progression propre.";
   const recoverySuffix = readinessMessage(readinessScore);
   const lowReadiness = readinessScore !== null && readinessScore <= 2;
+  const mediumReadiness = readinessScore !== null && readinessScore < 4.2;
   const conservativeMode = lowReadiness || trend === "down";
 
-  if (allAtTop && currentWeight > 0 && trend !== "down" && !lowReadiness) {
+  if (allAtTop && currentWeight > 0 && trend !== "down" && !mediumReadiness) {
     const recommendedWeight = currentWeight + 2.5;
     return { action: "increase_weight", currentWeight, recommendedWeight, currentReps: Math.round(averageReps), recommendedReps: minReps, minReps, maxReps, completedSets: sets.length, trend, trendPercent, readinessScore, message: `Toutes tes séries sont à ${maxReps} reps. Tu es prêt pour ${recommendedWeight} kg.${trendSuffix}${recoverySuffix}` };
   }
