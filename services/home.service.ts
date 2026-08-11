@@ -31,16 +31,11 @@ export async function getHomeData(userId: string) {
   const consistency = getWeeklyConsistency(completedSessions.map((session) => ({ date: session.finished_at ?? session.started_at, completed: true })), 4);
   const recoveryScore = recovery?.recovery_score != null ? Math.max(0, Math.min(100, Number(recovery.recovery_score) / 5 * 100)) : null;
   const strongestRecord = records?.[0];
-  const performance = getPerformanceScore({
-    currentE1rm: strongestRecord?.estimated_1rm != null ? Number(strongestRecord.estimated_1rm) : null,
-    previousE1rm: null,
-    volumeChangePercent: volumeChange,
-    prCount: records?.length ?? 0,
-    sessionCount: completedSessions.length,
-  });
+  const performance = getPerformanceScore({ currentE1rm: strongestRecord?.estimated_1rm != null ? Number(strongestRecord.estimated_1rm) : null, previousE1rm: null, volumeChangePercent: volumeChange, prCount: records?.length ?? 0, sessionCount: completedSessions.length });
   const globalScore = getGlobalProgressScore({ transformationScore: transformation.score, performanceScore: performance.score, recoveryScore, consistencyScore: consistency.completion * 100 });
   return {
     profile: profileResult.data, programs: programs ?? [], history: completedSessions, records, recovery, ranking, position, monthVolume, volumeChange,
-    body: { current: currentBody, previous: previousBody, delta: bodyDelta }, consistency, performance, globalScore,
+    body: { current: currentBody, previous: previousBody, delta: bodyDelta }, consistency, performance,
+    globalScore: { ...globalScore, pillarScores: { transformation: transformation.score, performance: performance.score, recovery: recoveryScore, consistency: consistency.completion * 100 } },
   };
 }
