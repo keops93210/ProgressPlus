@@ -1,0 +1,7 @@
+import { Lock, Sparkles } from "lucide-react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import Colors from "@/constants/colors";
+
+type Props={title:string;description:string;onPress?:()=>void};
+export function PremiumFeatureCard({title,description,onPress}:Props){return <TouchableOpacity activeOpacity={0.9} style={styles.card} onPress={onPress}><View style={styles.icon}><Sparkles color={Colors.primaryLight} size={18}/></View><View style={styles.copy}><View style={styles.row}><Text style={styles.title}>{title}</Text><View style={styles.badge}><Lock color={Colors.primaryLight} size={10}/><Text style={styles.badgeText}>PREMIUM</Text></View></View><Text style={styles.description}>{description}</Text></View></TouchableOpacity>}
+const styles=StyleSheet.create({card:{backgroundColor:Colors.surface,borderRadius:18,borderWidth:1,borderColor:Colors.primarySoft,padding:14,flexDirection:"row",alignItems:"center"},icon:{width:38,height:38,borderRadius:12,backgroundColor:Colors.primarySoft,alignItems:"center",justifyContent:"center"},copy:{flex:1,marginLeft:10},row:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",gap:8},title:{color:Colors.text,fontSize:14,fontWeight:"900",flex:1},badge:{flexDirection:"row",alignItems:"center",gap:4,backgroundColor:Colors.background,borderRadius:8,paddingHorizontal:7,paddingVertical:4},badgeText:{color:Colors.primaryLight,fontSize:8,fontWeight:"900",letterSpacing:.8},description:{color:Colors.textSecondary,fontSize:11,lineHeight:16,marginTop:5}});
