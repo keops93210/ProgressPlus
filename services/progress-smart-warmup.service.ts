@@ -1,0 +1,2 @@
+export type WarmupInput={targetWeight:number;targetReps:number;recentTopWeight:number|null;recentTopReps:number|null;exerciseType:'compound'|'isolation'};
+export function getSmartWarmup(i:WarmupInput){const ratio=i.exerciseType==='compound'?[0.4,0.6,0.75]:[0.5,0.7];const sets=ratio.map((r,index)=>({weight:Math.round(i.targetWeight*r/2.5)*2.5,reps:index===0?8:5}));if(i.recentTopWeight!=null&&i.recentTopWeight>=i.targetWeight)sets.push({weight:Math.round(i.targetWeight*0.85/2.5)*2.5,reps:3});return sets;}
