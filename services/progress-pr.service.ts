@@ -1,0 +1,2 @@
+export type PRInput={weight:number;reps:number;previousBestWeight:number|null;previousBestReps:number|null};
+export function classifyPR(i:PRInput){const currentE1rm=i.weight*(1+i.reps/30);const previous=i.previousBestWeight!=null&&i.previousBestReps!=null?i.previousBestWeight*(1+i.previousBestReps/30):null;if(previous==null)return{isPR:true,type:'first' as const,delta:null as number|null};const delta=Number((currentE1rm-previous).toFixed(1));return{isPR:delta>0.5,type:delta>0.5?'strength' as const:'none' as const,delta};}
