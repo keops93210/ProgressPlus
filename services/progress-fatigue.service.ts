@@ -1,0 +1,2 @@
+export type FatigueInput={loadDeltaPercent:number|null;performanceDeltaPercent:number|null;readiness:number|null;weeksWithoutDeload:number};
+export function getFatigueSignal(i:FatigueInput){let score=0;if(i.loadDeltaPercent!=null&&i.loadDeltaPercent>15)score+=2;if(i.performanceDeltaPercent!=null&&i.performanceDeltaPercent<0)score+=2;if(i.readiness!=null&&i.readiness<50)score+=2;if(i.weeksWithoutDeload>=8)score+=1;return{score,level:score>=5?'high' as const:score>=3?'moderate' as const:'low' as const};}
