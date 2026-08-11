@@ -2,7 +2,7 @@ import type { BodyMeasurement } from "@/services/body-progress.service";
 
 export type BodyGoalMetric = "weight_kg" | "body_fat_percent" | "waist_cm" | "arm_cm" | "chest_cm" | "thigh_cm";
 export type BodyGoalDirection = "decrease" | "increase";
-export type BodyGoal = { metric: BodyGoalMetric; target: number; direction: BodyGoalDirection; unit: string };
+export type BodyGoal = { metric: BodyGoalMetric; target: number; direction: BodyGoalDirection; unit: string; startValue?: number };
 
 export function getBodyGoalProgress(current: BodyMeasurement | null, goal: BodyGoal) {
   if (!current) return { progress: 0, remaining: null as number | null, completed: false };
@@ -10,7 +10,11 @@ export function getBodyGoalProgress(current: BodyMeasurement | null, goal: BodyG
   if (typeof value !== "number") return { progress: 0, remaining: null as number | null, completed: false };
   const remaining = goal.target - value;
   const completed = goal.direction === "decrease" ? value <= goal.target : value >= goal.target;
-  return { progress: completed ? 1 : 0, remaining: Number(Math.abs(remaining).toFixed(2)), completed };
+  const start = goal.startValue ?? value;
+  const totalDistance = Math.abs(goal.target - start);
+  const traveled = Math.abs(value - start);
+  const progress = completed ? 1 : totalDistance > 0 ? Math.min(traveled / totalDistance, 0.99) : 0;
+  return { progress, remaining: Number(Math.abs(remaining).toFixed(2)), completed };
 }
 
 export function getBodyTrend(measurements: BodyMeasurement[], metric: BodyGoalMetric) {
