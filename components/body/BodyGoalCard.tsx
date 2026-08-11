@@ -11,11 +11,12 @@ export function BodyGoalCard({ goal, current }: Props) {
   const result = getBodyGoalProgress(current, goal);
   const value = current?.[goal.metric];
   const display = typeof value === "number" ? `${value} ${goal.unit}` : "—";
+  const percent = Math.round(result.progress * 100);
   return <View style={styles.card}>
     <View style={styles.top}><View><Text style={styles.eyebrow}>OBJECTIF</Text><Text style={styles.title}>{LABELS[goal.metric]}</Text></View><Text style={[styles.status, result.completed ? styles.done : styles.active]}>{result.completed ? "ATTEINT" : "EN COURS"}</Text></View>
     <View style={styles.values}><View><Text style={styles.label}>ACTUEL</Text><Text style={styles.value}>{display}</Text></View><Text style={styles.arrow}>→</Text><View style={styles.target}><Text style={styles.label}>CIBLE</Text><Text style={styles.value}>{goal.target} {goal.unit}</Text></View></View>
-    <View style={styles.track}><View style={[styles.fill, { width: result.completed ? "100%" : "35%" }]} /></View>
-    <Text style={styles.remaining}>{result.completed ? "Objectif atteint. Nouveau cap ?" : result.remaining != null ? `${result.remaining} ${goal.unit} restant${result.remaining > 1 ? "s" : ""}` : "Renseigne une mesure pour suivre l'objectif."}</Text>
+    <View style={styles.track}><View style={[styles.fill, { width: `${percent}%` }]} /></View>
+    <Text style={styles.remaining}>{result.completed ? "Objectif atteint. Nouveau cap ?" : result.remaining != null ? `${result.remaining} ${goal.unit} restant${result.remaining > 1 ? "s" : ""} • ${percent}%` : "Renseigne une mesure pour suivre l'objectif."}</Text>
   </View>;
 }
 
