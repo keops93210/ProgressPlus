@@ -1,0 +1,2 @@
+export type RestInput={exerciseType:'compound'|'isolation';targetReps:number;rir:number|null;lastSetPerformance:'better'|'same'|'worse'|null};
+export function getAdaptiveRest(i:RestInput){let seconds=i.exerciseType==='compound'?150:90;if(i.rir!=null&&i.rir<=1)seconds+=30;if(i.lastSetPerformance==='worse')seconds+=30;if(i.targetReps<=5)seconds+=30;return{seconds,label:`${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`};}
