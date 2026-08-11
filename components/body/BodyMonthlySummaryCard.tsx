@@ -1,0 +1,12 @@
+import { StyleSheet, Text, View } from "react-native";
+import Colors from "@/constants/colors";
+import type { BodyMonthlySummary } from "@/services/body-monthly-summary.service";
+
+type Props = { summary: BodyMonthlySummary };
+
+export function BodyMonthlySummaryCard({ summary }: Props) {
+  const tone = summary.signal === "positive" ? Colors.success : summary.signal === "watch" ? Colors.danger : Colors.primaryLight;
+  return <View style={styles.card}><View style={styles.header}><View><Text style={styles.eyebrow}>BILAN DU MOIS</Text><Text style={styles.title}>Transformation corporelle</Text></View><View style={[styles.badge,{borderColor:tone}]}><Text style={[styles.badgeText,{color:tone}]}>{summary.signal === "positive" ? "FAVORABLE" : summary.signal === "watch" ? "À SURVEILLER" : "STABLE"}</Text></View></View><Text style={styles.message}>{summary.message}</Text><View style={styles.grid}><Metric label="Poids" value={summary.weightDelta} unit="kg"/><Metric label="Taille" value={summary.waistDelta} unit="cm"/><Metric label="Bras" value={summary.armDelta} unit="cm"/><Metric label="Poitrine" value={summary.chestDelta} unit="cm"/></View><Text style={styles.footer}>{summary.measurements} mesure{summary.measurements>1?"s":""} ce mois-ci</Text></View>;
+}
+function Metric({label,value,unit}:{label:string;value:number|null;unit:string}){return <View style={styles.metric}><Text style={styles.label}>{label}</Text><Text style={styles.value}>{value==null?"—":`${value>0?"+":""}${value} ${unit}`}</Text></View>}
+const styles=StyleSheet.create({card:{backgroundColor:Colors.surface,borderRadius:20,borderWidth:1,borderColor:Colors.border,padding:16},header:{flexDirection:"row",justifyContent:"space-between",alignItems:"center"},eyebrow:{color:Colors.primary,fontSize:9,fontWeight:"900",letterSpacing:1.2},title:{color:Colors.text,fontSize:17,fontWeight:"900",marginTop:3},badge:{borderWidth:1,borderRadius:10,paddingHorizontal:8,paddingVertical:5},badgeText:{fontSize:8,fontWeight:"900"},message:{color:Colors.textSecondary,fontSize:12,lineHeight:18,marginTop:12},grid:{flexDirection:"row",flexWrap:"wrap",gap:8,marginTop:13},metric:{width:"48%",backgroundColor:Colors.background,borderRadius:11,padding:9},label:{color:Colors.textMuted,fontSize:9,fontWeight:"800"},value:{color:Colors.text,fontSize:14,fontWeight:"900",marginTop:3},footer:{color:Colors.textMuted,fontSize:9,marginTop:10}});
