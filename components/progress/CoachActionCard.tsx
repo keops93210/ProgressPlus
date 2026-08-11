@@ -1,0 +1,6 @@
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import Colors from "@/constants/colors";
+
+type Props={title:string;message:string;label?:string;onPress?:()=>void};
+export function CoachActionCard({title,message,label="Voir le plan",onPress}:Props){return <View style={styles.card}><View style={styles.badge}><Text style={styles.badgeText}>PROGRESS+ COACH</Text></View><Text style={styles.title}>{title}</Text><Text style={styles.message}>{message}</Text><TouchableOpacity onPress={onPress} activeOpacity={0.8} style={styles.button}><Text style={styles.buttonText}>{label}</Text></TouchableOpacity></View>}
+const styles=StyleSheet.create({card:{backgroundColor:Colors.surface,borderRadius:22,borderWidth:1,borderColor:Colors.border,padding:18},badge:{alignSelf:"flex-start",backgroundColor:Colors.primarySoft,borderRadius:8,paddingHorizontal:9,paddingVertical:5},badgeText:{color:Colors.primaryLight,fontSize:9,fontWeight:"900",letterSpacing:1},title:{color:Colors.text,fontSize:20,fontWeight:"900",marginTop:12},message:{color:Colors.textSecondary,fontSize:13,lineHeight:19,marginTop:6},button:{marginTop:14,backgroundColor:Colors.primary,borderRadius:12,paddingVertical:11,alignItems:"center"},buttonText:{color:Colors.textOnPrimary,fontSize:12,fontWeight:"900"}});
