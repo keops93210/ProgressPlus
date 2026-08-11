@@ -1,0 +1,2 @@
+export type LoadPoint={date:string;volume:number};
+export function getTrainingLoadTrend(points:LoadPoint[]){const sorted=[...points].sort((a,b)=>new Date(a.date).getTime()-new Date(b.date).getTime());if(sorted.length<2)return{delta:null as number|null,direction:"stable" as const};const previous=sorted[sorted.length-2].volume;const current=sorted[sorted.length-1].volume;const delta=previous===0?null:Number(((current-previous)/previous*100).toFixed(1));return{delta,direction:delta==null||Math.abs(delta)<2?"stable" as const:delta>0?"up" as const:"down" as const};}
