@@ -22,10 +22,10 @@ export default function BodyProgressScreen() {
   const load = useCallback(async (refresh = false) => { if (!user) return; try { refresh ? setRefreshing(true) : setLoading(true); setHistory(await getBodyMeasurements(user.id)); } catch (error) { console.log("BODY PROGRESS LOAD ERROR =", error); } finally { setLoading(false); setRefreshing(false); } }, [user]);
   useEffect(() => { load(); }, [load]);
   async function handleSave() {
-    if (!user || saving) return; const input: Record<string, number | null> = {};
-    for (const field of FIELDS) { const raw = values[field.key]; if (raw?.trim()) { const parsed = Number(raw.replace(",", ".")); if (!Number.isFinite(parsed) || parsed <= 0) { Alert.alert("Valeur invalide", `${field.label} doit être un nombre positif.`); return; } input[field.key] = parsed; } else input[field.key] = null; }
-    if (Object.values(input).every((value) => value == null)) { Alert.alert("Mesure vide", "Renseigne au moins une mesure avant d'enregistrer."); return; }
-    try { setSaving(true); await saveBodyMeasurement(user.id, input as BodyMeasurementInput); setValues({}); await load(true); Alert.alert("Mesure enregistrée", "Ton évolution corporelle a été mise à jour."); } catch (error) { console.log("BODY PROGRESS SAVE ERROR =", error); Alert.alert("Impossible d'enregistrer", "Vérifie ta connexion puis réessaie."); } finally { setSaving(false); }
+    if (!user || saving) return; const input: BodyMeasurementInput = {};
+    for (const field of FIELDS) { const raw = values[field.key]; if (raw?.trim()) { const parsed = Number(raw.replace(",", ".")); if (!Number.isFinite(parsed) || parsed <= 0) { Alert.alert("Valeur invalide", `${field.label} doit être un nombre positif.`); return; } input[field.key] = parsed; } }
+    if (Object.keys(input).length === 0) { Alert.alert("Mesure vide", "Renseigne au moins une mesure avant d'enregistrer."); return; }
+    try { setSaving(true); await saveBodyMeasurement(user.id, input); setValues({}); await load(true); Alert.alert("Mesure enregistrée", "Ton évolution corporelle a été mise à jour."); } catch (error) { console.log("BODY PROGRESS SAVE ERROR =", error); Alert.alert("Impossible d'enregistrer", "Vérifie ta connexion puis réessaie."); } finally { setSaving(false); }
   }
   const latest = history[0]; const previous = history[1];
   if (loading) return <SafeAreaView style={styles.safe}><View style={styles.loading}><ActivityIndicator color={Colors.primary} /><Text style={styles.loadingText}>Chargement de ton évolution...</Text></View></SafeAreaView>;
