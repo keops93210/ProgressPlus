@@ -5,16 +5,34 @@ export type GlobalProgressInputs = {
   consistencyScore: number | null;
 };
 
+const weights: Record<keyof GlobalProgressInputs, number> = {
+  transformationScore: 0.3,
+  performanceScore: 0.3,
+  recoveryScore: 0.2,
+  consistencyScore: 0.2,
+};
+
 export function getGlobalProgressScore(input: GlobalProgressInputs) {
-  const values = [input.transformationScore, input.performanceScore, input.recoveryScore, input.consistencyScore].filter((v): v is number => Number.isFinite(v));
-  if (!values.length) return { score: null as number | null, label: "Pas assez de données" };
-  const weights = { transformationScore: 0.3, performanceScore: 0.3, recoveryScore: 0.2, consistencyScore: 0.2 };
+  const available = (Object.keys(weights) as Array<keyof GlobalProgressInputs>).filter((key) => Number.isFinite(input[key]));
+  if (!available.length) return { score: null as number | null, label: "Pas assez de données", confidence: 0, available: 0, missing: Object.keys(weights) as string[] };
+
   let weighted = 0;
-  let weight = 0;
-  for (const [key, factor] of Object.entries(weights)) {
-    const value = input[key as keyof GlobalProgressInputs];
-    if (typeof value === "number" && Number.isFinite(value)) { weighted += value * factor; weight += factor; }
+  let activeWeight = 0;
+  for (const key of available) {
+    const value = input[key];
+    if (typeof value === "number") {
+      weighted += value * weights[key];
+      activeWeight += weights[key];
+    }
   }
-  const score = Math.round(weighted / weight);
-  return { score, label: score >= 80 ? "Excellente progression" : score >= 65 ? "Bonne progression" : score >= 50 ? "Progression stable" : "À ajuster" };
+
+  const score = Math.round(weighted / activeWeight);
+  const missing = (Object.keys(weights) as Array<keyof GlobalProgressInputs>).filter((key) => !available.includes(key));
+  return {
+    score,
+    label: score >= 80 ? "Excellente progression" : score >= 65 ? "Bonne progression" : score >= 50 ? "Progression stable" : "À ajuster",
+    confidence: Math.round((activeWeight / 1) * 100),
+    available: available.length,
+    missing,
+  };
 }
