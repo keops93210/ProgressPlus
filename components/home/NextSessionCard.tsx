@@ -1,0 +1,6 @@
+import { ArrowUpRight, Moon, ShieldCheck } from "lucide-react-native";
+import { StyleSheet, Text, View } from "react-native";
+import Colors from "@/constants/colors";
+import { getNextSessionGuidance, type NextSessionInput } from "@/services/progress-next-session.service";
+export function NextSessionCard(input:NextSessionInput){const g=getNextSessionGuidance(input);const Icon=g.mode==='recover'?Moon:g.mode==='progress'?ArrowUpRight:ShieldCheck;return <View style={styles.card}><View style={styles.icon}><Icon size={18} color={Colors.primaryLight}/></View><View style={styles.body}><Text style={styles.eyebrow}>PROCHAINE SÉANCE</Text><Text style={styles.title}>{g.title}</Text><Text style={styles.message}>{g.message}</Text></View></View>}
+const styles=StyleSheet.create({card:{flexDirection:'row',backgroundColor:Colors.surface,borderRadius:20,borderWidth:1,borderColor:Colors.border,padding:15},icon:{width:38,height:38,borderRadius:12,backgroundColor:Colors.primarySoft,alignItems:'center',justifyContent:'center',marginRight:11},body:{flex:1},eyebrow:{color:Colors.primaryLight,fontSize:9,fontWeight:'900',letterSpacing:1.1},title:{color:Colors.text,fontSize:16,fontWeight:'900',marginTop:3},message:{color:Colors.textSecondary,fontSize:11,lineHeight:17,marginTop:5}});
