@@ -1,0 +1,6 @@
+import { Sparkles } from "lucide-react-native";
+import { StyleSheet, Text, View } from "react-native";
+import Colors from "@/constants/colors";
+import { getDashboardInsight, type DashboardInsightInput } from "@/services/progress-dashboard-insight.service";
+export function DashboardInsightCard(input:DashboardInsightInput){const insight=getDashboardInsight(input);return <View style={styles.card}><View style={styles.icon}><Sparkles size={17} color={Colors.primaryLight}/></View><View style={styles.body}><Text style={styles.eyebrow}>PROGRESS+ ANALYSIS</Text><Text style={styles.title}>{insight.title}</Text><Text style={styles.message}>{insight.message}</Text></View></View>}
+const styles=StyleSheet.create({card:{flexDirection:'row',backgroundColor:Colors.surface,borderRadius:20,borderWidth:1,borderColor:Colors.border,padding:15},icon:{width:36,height:36,borderRadius:12,backgroundColor:Colors.primarySoft,alignItems:'center',justifyContent:'center',marginRight:11},body:{flex:1},eyebrow:{color:Colors.primaryLight,fontSize:9,fontWeight:'900',letterSpacing:1.1},title:{color:Colors.text,fontSize:16,fontWeight:'900',marginTop:3},message:{color:Colors.textSecondary,fontSize:11,lineHeight:17,marginTop:5}});
