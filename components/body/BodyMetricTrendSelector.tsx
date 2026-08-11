@@ -1,0 +1,6 @@
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import Colors from "@/constants/colors";
+export type BodyMetricKey="weight_kg"|"waist_cm"|"arm_cm"|"chest_cm"|"thigh_cm"|"body_fat_percent";
+const OPTIONS:[BodyMetricKey,string,string][]=[["weight_kg","Poids","kg"],["waist_cm","Taille","cm"],["arm_cm","Bras","cm"],["chest_cm","Poitrine","cm"],["thigh_cm","Cuisse","cm"],["body_fat_percent","Masse grasse","%"]];
+export function BodyMetricTrendSelector({value,onChange}:{value:BodyMetricKey;onChange:(value:BodyMetricKey)=>void}){return <View style={styles.wrap}>{OPTIONS.map(([key,label,unit])=><Pressable key={key} onPress={()=>onChange(key)} style={[styles.item,value===key&&styles.active]}><Text style={[styles.label,value===key&&styles.activeText]}>{label}</Text><Text style={[styles.unit,value===key&&styles.activeText]}>{unit}</Text></Pressable>)}</View>}
+const styles=StyleSheet.create({wrap:{flexDirection:"row",flexWrap:"wrap",gap:8},item:{paddingHorizontal:12,paddingVertical:9,borderRadius:12,backgroundColor:Colors.surface,borderWidth:1,borderColor:Colors.border},active:{backgroundColor:Colors.primarySoft,borderColor:Colors.primary},label:{color:Colors.textSecondary,fontSize:11,fontWeight:"800"},unit:{color:Colors.textMuted,fontSize:9,marginTop:2},activeText:{color:Colors.primaryLight}});
