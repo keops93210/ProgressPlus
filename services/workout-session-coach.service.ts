@@ -21,18 +21,43 @@ export type SessionCoachDecision = {
   qualityScore: number;
 };
 
+function finite(value: number | null | undefined, fallback = 0) {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
+function normalizeInput(input: SessionCoachInput): SessionCoachInput {
+  const plannedSets = Math.max(0, Math.round(finite(input.plannedSets)));
+  const completedSets = Math.max(0, Math.round(finite(input.completedSets)));
+  const averageRir = input.averageRir == null ? null : clamp(finite(input.averageRir), 0, 5);
+  const recoveryScore = input.recoveryScore == null ? null : clamp(finite(input.recoveryScore), 0, 5);
+  const volumeChangePercent = input.volumeChangePercent == null ? null : clamp(finite(input.volumeChangePercent), -100, 100);
+
+  return {
+    plannedSets,
+    completedSets,
+    averageRir,
+    recoveryScore,
+    volumeChangePercent,
+    shortenedSets: Math.max(0, Math.round(finite(input.shortenedSets))),
+    personalRecords: Math.max(0, Math.round(finite(input.personalRecords))),
+    hardSets: Math.max(0, Math.round(finite(input.hardSets))),
+    painReported: input.painReported === true,
+  };
+}
+
 export function getSessionQualityScore(input: SessionCoachInput) {
-  const completion = input.plannedSets > 0 ? clamp(input.completedSets / input.plannedSets, 0, 1) : 0;
-  const effort = input.averageRir == null ? 0.7 : 1 - clamp(Math.abs(input.averageRir - 2.5) / 4, 0, 1);
-  const recovery = input.recoveryScore == null ? 0.7 : clamp(input.recoveryScore / 5, 0, 1);
-  const trend = input.volumeChangePercent == null ? 0.5 : clamp(0.5 + input.volumeChangePercent / 20, 0, 1);
-  const pr = clamp(input.personalRecords / 2, 0, 1);
-  const shortenedPenalty = input.plannedSets > 0 ? clamp(input.shortenedSets / input.plannedSets, 0, 1) * 15 : 0;
-  const hardPenalty = input.plannedSets > 0 ? clamp(input.hardSets / input.plannedSets, 0, 1) * 8 : 0;
+  const safe = normalizeInput(input);
+  const completion = safe.plannedSets > 0 ? clamp(safe.completedSets / safe.plannedSets, 0, 1) : 0;
+  const effort = safe.averageRir == null ? 0.7 : 1 - clamp(Math.abs(safe.averageRir - 2.5) / 4, 0, 1);
+  const recovery = safe.recoveryScore == null ? 0.7 : clamp(safe.recoveryScore / 5, 0, 1);
+  const trend = safe.volumeChangePercent == null ? 0.5 : clamp(0.5 + safe.volumeChangePercent / 20, 0, 1);
+  const pr = clamp(safe.personalRecords / 2, 0, 1);
+  const shortenedPenalty = safe.plannedSets > 0 ? clamp(safe.shortenedSets / safe.plannedSets, 0, 1) * 15 : 0;
+  const hardPenalty = safe.plannedSets > 0 ? clamp(safe.hardSets / safe.plannedSets, 0, 1) * 8 : 0;
 
   return Math.round(clamp(
     completion * 30 + effort * 22 + recovery * 18 + trend * 15 + pr * 15 - shortenedPenalty - hardPenalty,
@@ -42,14 +67,15 @@ export function getSessionQualityScore(input: SessionCoachInput) {
 }
 
 export function getSessionCoachDecision(input: SessionCoachInput): SessionCoachDecision {
-  const qualityScore = getSessionQualityScore(input);
-  const lowRecovery = input.recoveryScore != null && input.recoveryScore <= 2;
-  const veryLowRecovery = input.recoveryScore != null && input.recoveryScore <= 1.5;
-  const pain = input.painReported === true;
-  const repeatedHardEffort = input.hardSets >= 3;
-  const manyShortened = input.shortenedSets >= Math.max(2, Math.ceil(input.plannedSets * 0.25));
-  const goodRecovery = input.recoveryScore != null && input.recoveryScore >= 4.2;
-  const positiveVolume = input.volumeChangePercent != null && input.volumeChangePercent >= 3;
+  const safe = normalizeInput(input);
+  const qualityScore = getSessionQualityScore(safe);
+  const lowRecovery = safe.recoveryScore != null && safe.recoveryScore <= 2;
+  const veryLowRecovery = safe.recoveryScore != null && safe.recoveryScore <= 1.5;
+  const pain = safe.painReported === true;
+  const repeatedHardEffort = safe.hardSets >= 3;
+  const manyShortened = safe.shortenedSets >= Math.max(2, Math.ceil(safe.plannedSets * 0.25));
+  const goodRecovery = safe.recoveryScore != null && safe.recoveryScore >= 4.2;
+  const positiveVolume = safe.volumeChangePercent != null && safe.volumeChangePercent >= 3;
 
   if (pain || veryLowRecovery) {
     return {
@@ -75,7 +101,7 @@ export function getSessionCoachDecision(input: SessionCoachInput): SessionCoachD
     };
   }
 
-  if (goodRecovery && positiveVolume && input.personalRecords > 0 && !manyShortened) {
+  if (goodRecovery && positiveVolume && safe.personalRecords > 0 && !manyShortened) {
     return {
       tone: "progress",
       title: "Progression confirmée",
