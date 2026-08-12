@@ -8,9 +8,9 @@ const ANATOMY_IMAGE =
   "https://commons.wikimedia.org/wiki/Special:FilePath/Gray410_pectoralis_major.png";
 
 const PORTION_COLORS = {
-  clavicular: "#8B5CF6",
-  sternal: "#F97316",
-  costal: "#3B82F6",
+  clavicular: "#A78BFA",
+  sternal: "#FB923C",
+  costal: "#60A5FA",
 };
 
 type PortionKey = "clavicular" | "sternal" | "costal";
@@ -79,14 +79,14 @@ export default function PectoralAnatomyCard({ exerciseName, secondary }: Props) 
           <Text style={styles.title}>Anatomie du muscle sollicité</Text>
         </View>
         <View style={styles.infoButton}>
-          <Info size={20} color={Colors.primary} />
+          <Info size={20} color={Colors.primaryLight} />
         </View>
       </View>
 
       <Pressable onPress={() => setFullscreen(true)} style={styles.imageCard}>
         <Image source={{ uri: ANATOMY_IMAGE }} style={styles.image} resizeMode="contain" />
         <View style={styles.expandButton}>
-          <Maximize2 size={19} color="#FFFFFF" />
+          <Maximize2 size={19} color={Colors.textOnPrimary} />
         </View>
         <View style={styles.imageLabel}>
           <View style={[styles.dot, { backgroundColor: Colors.primary }]} />
@@ -97,7 +97,7 @@ export default function PectoralAnatomyCard({ exerciseName, secondary }: Props) 
       <View style={styles.summaryCard}>
         <View style={styles.summaryRow}>
           <View style={styles.summaryIcon}>
-            <Dumbbell size={18} color="#FFFFFF" />
+            <Dumbbell size={18} color={Colors.textOnPrimary} />
           </View>
           <View style={styles.summaryCopy}>
             <Text style={styles.summaryKicker}>MUSCLE PRINCIPAL</Text>
@@ -107,7 +107,7 @@ export default function PectoralAnatomyCard({ exerciseName, secondary }: Props) 
         <View style={styles.divider} />
         <View style={styles.summaryRow}>
           <View style={styles.secondaryIcon}>
-            <Users size={18} color={Colors.primary} />
+            <Users size={18} color={Colors.primaryLight} />
           </View>
           <View style={styles.summaryCopy}>
             <Text style={styles.summaryKicker}>MUSCLES SECONDAIRES</Text>
@@ -192,39 +192,39 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
   headerIcon: { width: 38, height: 38, borderRadius: 12, backgroundColor: Colors.surfaceLight, alignItems: "center", justifyContent: "center", marginRight: 10 },
   headerCopy: { flex: 1 },
-  kicker: { color: Colors.primary, fontSize: 12, fontWeight: "900", letterSpacing: 1.2 },
+  kicker: { color: Colors.primaryLight, fontSize: 12, fontWeight: "900", letterSpacing: 1.2 },
   title: { color: Colors.text, fontSize: 20, lineHeight: 24, fontWeight: "900", marginTop: 2 },
   infoButton: { width: 42, height: 42, borderRadius: 14, backgroundColor: Colors.surfaceLight, alignItems: "center", justifyContent: "center" },
-  imageCard: { height: 330, borderRadius: 20, overflow: "hidden", backgroundColor: "#FAFAFC", borderWidth: 1, borderColor: Colors.border, alignItems: "center", justifyContent: "center" },
+  imageCard: { height: 330, borderRadius: 20, overflow: "hidden", backgroundColor: Colors.surfaceElevated, borderWidth: 1, borderColor: Colors.borderStrong, alignItems: "center", justifyContent: "center" },
   image: { width: "100%", height: "100%" },
-  expandButton: { position: "absolute", right: 12, top: 12, width: 44, height: 44, borderRadius: 14, backgroundColor: "#27272F", alignItems: "center", justifyContent: "center" },
-  imageLabel: { position: "absolute", left: 12, bottom: 12, flexDirection: "row", alignItems: "center", backgroundColor: "#FFFFFF", borderRadius: 14, paddingHorizontal: 12, paddingVertical: 9, borderWidth: 1, borderColor: Colors.border },
+  expandButton: { position: "absolute", right: 12, top: 12, width: 44, height: 44, borderRadius: 14, backgroundColor: Colors.surface, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: Colors.border },
+  imageLabel: { position: "absolute", left: 12, bottom: 12, flexDirection: "row", alignItems: "center", backgroundColor: Colors.surface, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 9, borderWidth: 1, borderColor: Colors.border },
   dot: { width: 9, height: 9, borderRadius: 5, marginRight: 8 },
-  imageLabelText: { color: Colors.primaryDark, fontSize: 14, fontWeight: "900" },
-  summaryCard: { marginTop: 12, backgroundColor: Colors.surfaceLight, borderRadius: 18, borderWidth: 1, borderColor: "#E4D9FF", paddingHorizontal: 14 },
+  imageLabelText: { color: Colors.text, fontSize: 14, fontWeight: "900" },
+  summaryCard: { marginTop: 12, backgroundColor: Colors.primarySoft, borderRadius: 18, borderWidth: 1, borderColor: Colors.borderStrong, paddingHorizontal: 14 },
   summaryRow: { flexDirection: "row", alignItems: "center", paddingVertical: 13 },
   summaryIcon: { width: 36, height: 36, borderRadius: 11, backgroundColor: Colors.primary, alignItems: "center", justifyContent: "center", marginRight: 11 },
-  secondaryIcon: { width: 36, height: 36, borderRadius: 11, backgroundColor: "#FFFFFF", alignItems: "center", justifyContent: "center", marginRight: 11 },
+  secondaryIcon: { width: 36, height: 36, borderRadius: 11, backgroundColor: Colors.surfaceElevated, alignItems: "center", justifyContent: "center", marginRight: 11 },
   summaryCopy: { flex: 1 },
-  summaryKicker: { color: Colors.primary, fontSize: 10, fontWeight: "900", letterSpacing: 1 },
+  summaryKicker: { color: Colors.primaryLight, fontSize: 10, fontWeight: "900", letterSpacing: 1 },
   summaryValue: { color: Colors.text, fontSize: 17, fontWeight: "900", marginTop: 2 },
   secondaryText: { color: Colors.textSecondary, fontSize: 14, lineHeight: 20, marginTop: 2 },
-  divider: { height: 1, backgroundColor: "#E4D9FF" },
+  divider: { height: 1, backgroundColor: Colors.borderStrong },
   portionsCard: { marginTop: 12, backgroundColor: Colors.surfaceLight, borderRadius: 18, padding: 14 },
-  portionsTitle: { color: Colors.primaryDark, fontSize: 17, fontWeight: "900", marginBottom: 8 },
-  portion: { flexDirection: "row", alignItems: "center", backgroundColor: "#FFFFFF", borderRadius: 13, padding: 10, marginTop: 7, borderWidth: 1, borderColor: Colors.border },
-  portionActive: { backgroundColor: "#F7F2FF" },
+  portionsTitle: { color: Colors.primaryLight, fontSize: 17, fontWeight: "900", marginBottom: 8 },
+  portion: { flexDirection: "row", alignItems: "center", backgroundColor: Colors.surfaceElevated, borderRadius: 13, padding: 10, marginTop: 7, borderWidth: 1, borderColor: Colors.border },
+  portionActive: { backgroundColor: Colors.primarySoft },
   portionDot: { width: 12, height: 12, borderRadius: 6, marginRight: 10 },
   portionCopy: { flex: 1 },
   portionName: { color: Colors.text, fontSize: 13, fontWeight: "800" },
   portionLabel: { color: Colors.textMuted, fontSize: 11, marginTop: 2 },
   priority: { fontSize: 9, fontWeight: "900" },
-  focusCard: { marginTop: 12, padding: 12, borderRadius: 14, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#E4D9FF" },
-  focusTitle: { color: Colors.primary, fontSize: 11, fontWeight: "900", letterSpacing: 0.7 },
+  focusCard: { marginTop: 12, padding: 12, borderRadius: 14, backgroundColor: Colors.surfaceElevated, borderWidth: 1, borderColor: Colors.borderStrong },
+  focusTitle: { color: Colors.primaryLight, fontSize: 11, fontWeight: "900", letterSpacing: 0.7 },
   focusName: { color: Colors.text, fontSize: 15, fontWeight: "900", marginTop: 3 },
   focusText: { color: Colors.textSecondary, fontSize: 12, lineHeight: 18, marginTop: 3 },
   modalBackdrop: { flex: 1, backgroundColor: "rgba(10,8,18,0.96)", alignItems: "center", justifyContent: "center", padding: 18 },
   fullscreenImage: { width: "100%", height: "82%" },
-  modalClose: { position: "absolute", right: 18, top: 58, zIndex: 2, backgroundColor: "#FFFFFF", borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10 },
-  modalCloseText: { color: "#17141D", fontSize: 13, fontWeight: "800" },
+  modalClose: { position: "absolute", right: 18, top: 58, zIndex: 2, backgroundColor: Colors.surfaceElevated, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 1, borderColor: Colors.border },
+  modalCloseText: { color: Colors.text, fontSize: 13, fontWeight: "800" },
 });
