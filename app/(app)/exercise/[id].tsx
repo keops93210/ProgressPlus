@@ -60,7 +60,7 @@ export default function ExerciseDetailScreen() {
             <View style={styles.heroImageWrap}>
               <Image source={{ uri: exercise!.image_url! }} style={styles.heroImage} resizeMode="cover" />
               <View style={styles.imageBadge}>
-                <Dumbbell size={14} color={Colors.primary} />
+                <Dumbbell size={14} color={Colors.primaryLight} />
                 <Text style={styles.imageBadgeText}>Démonstration</Text>
               </View>
             </View>
@@ -79,12 +79,12 @@ export default function ExerciseDetailScreen() {
 
           {hasVideo ? (
             <Pressable onPress={() => Linking.openURL(exercise!.video_url!)} style={({ pressed }) => [styles.videoButton, pressed && styles.pressed]}>
-              <View style={styles.videoIcon}><Play size={16} color="#FFFFFF" fill="#FFFFFF" /></View>
+              <View style={styles.videoIcon}><Play size={16} color={Colors.textOnPrimary} fill={Colors.textOnPrimary} /></View>
               <View style={styles.videoCopy}>
                 <Text style={styles.videoTitle}>Voir le mouvement</Text>
                 <Text style={styles.videoSubtitle}>Démonstration vidéo</Text>
               </View>
-              <Video size={20} color={Colors.primary} />
+              <Video size={20} color={Colors.primaryLight} />
             </Pressable>
           ) : null}
         </View>
@@ -107,7 +107,7 @@ export default function ExerciseDetailScreen() {
         <GuideSection title="Comment réaliser le mouvement" items={guide.movement} numbered />
 
         <View style={styles.warningCard}>
-          <TriangleAlert size={22} color="#B45309" />
+          <TriangleAlert size={22} color="#F59E0B" />
           <View style={styles.warningCopy}>
             <Text style={styles.warningTitle}>À éviter</Text>
             {guide.mistakes.map((item) => <Text key={item} style={styles.warningItem}>• {item}</Text>)}
@@ -115,7 +115,7 @@ export default function ExerciseDetailScreen() {
         </View>
 
         <View style={styles.tipCard}>
-          <CheckCircle2 size={22} color={Colors.primary} />
+          <CheckCircle2 size={22} color={Colors.primaryLight} />
           <View style={styles.tipCopy}>
             <Text style={styles.tipTitle}>Conseil Progress+</Text>
             <Text style={styles.tipText}>{guide.tip}</Text>
@@ -147,19 +147,19 @@ const styles = StyleSheet.create({
   backButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.surfaceLight, alignItems: "center", justifyContent: "center" },
   headerTitle: { color: Colors.text, fontSize: 18, fontWeight: "800" },
   headerSpacer: { width: 44 },
-  hero: { backgroundColor: Colors.surfaceLight, borderRadius: 24, padding: 16, borderWidth: 1, borderColor: "#E4D9FF", marginBottom: 16 },
-  heroImageWrap: { height: 220, borderRadius: 18, overflow: "hidden", backgroundColor: "#FFFFFF", marginBottom: 16, position: "relative" },
+  hero: { backgroundColor: Colors.surfaceLight, borderRadius: 24, padding: 16, borderWidth: 1, borderColor: Colors.borderStrong, marginBottom: 16 },
+  heroImageWrap: { height: 220, borderRadius: 18, overflow: "hidden", backgroundColor: Colors.surfaceElevated, marginBottom: 16, position: "relative" },
   heroImage: { width: "100%", height: "100%" },
-  imageBadge: { position: "absolute", left: 10, bottom: 10, flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "rgba(255,255,255,0.94)", borderRadius: 10, paddingHorizontal: 9, paddingVertical: 6 },
-  imageBadgeText: { color: Colors.primaryDark, fontSize: 11, fontWeight: "800" },
-  heroIcon: { width: 48, height: 48, borderRadius: 16, backgroundColor: "#FFFFFF", alignItems: "center", justifyContent: "center", marginBottom: 14 },
+  imageBadge: { position: "absolute", left: 10, bottom: 10, flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "rgba(23,24,30,0.94)", borderRadius: 10, paddingHorizontal: 9, paddingVertical: 6, borderWidth: 1, borderColor: Colors.border },
+  imageBadgeText: { color: Colors.text, fontSize: 11, fontWeight: "800" },
+  heroIcon: { width: 48, height: 48, borderRadius: 16, backgroundColor: Colors.surfaceElevated, alignItems: "center", justifyContent: "center", marginBottom: 14 },
   title: { color: Colors.text, fontSize: 28, fontWeight: "900" },
   intro: { color: Colors.textSecondary, fontSize: 14, lineHeight: 21, marginTop: 8 },
   metaRow: { flexDirection: "row", gap: 8, marginTop: 16, flexWrap: "wrap" },
-  meta: { backgroundColor: "#FFFFFF", borderRadius: 12, paddingHorizontal: 11, paddingVertical: 9, borderWidth: 1, borderColor: Colors.border },
+  meta: { backgroundColor: Colors.surfaceElevated, borderRadius: 12, paddingHorizontal: 11, paddingVertical: 9, borderWidth: 1, borderColor: Colors.border },
   metaText: { color: Colors.textMuted, fontSize: 9, fontWeight: "700", textTransform: "uppercase" },
   metaValue: { color: Colors.text, fontSize: 12, fontWeight: "800", marginTop: 3 },
-  videoButton: { flexDirection: "row", alignItems: "center", marginTop: 14, padding: 11, borderRadius: 15, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: Colors.border },
+  videoButton: { flexDirection: "row", alignItems: "center", marginTop: 14, padding: 11, borderRadius: 15, backgroundColor: Colors.surfaceElevated, borderWidth: 1, borderColor: Colors.border },
   videoIcon: { width: 34, height: 34, borderRadius: 10, backgroundColor: Colors.primary, alignItems: "center", justifyContent: "center" },
   videoCopy: { flex: 1, marginLeft: 10 },
   videoTitle: { color: Colors.text, fontSize: 13, fontWeight: "900" },
@@ -171,19 +171,19 @@ const styles = StyleSheet.create({
   figureWrap: { alignItems: "center", marginVertical: 8 },
   primaryBadge: { flexDirection: "row", alignItems: "center", backgroundColor: Colors.surfaceLight, borderRadius: 12, padding: 11 },
   dot: { width: 9, height: 9, borderRadius: 5, backgroundColor: Colors.primary, marginRight: 8 },
-  primaryText: { color: Colors.primaryDark, fontSize: 13, fontWeight: "800" },
+  primaryText: { color: Colors.primaryLight, fontSize: 13, fontWeight: "800" },
   secondary: { color: Colors.textSecondary, fontSize: 12, marginTop: 10, lineHeight: 18 },
   section: { marginBottom: 22 },
   step: { flexDirection: "row", alignItems: "flex-start", marginTop: 11 },
   stepNumber: { width: 28, height: 28, borderRadius: 14, backgroundColor: Colors.surfaceLight, alignItems: "center", justifyContent: "center", marginRight: 10 },
-  stepNumberText: { color: Colors.primary, fontSize: 13, fontWeight: "900" },
+  stepNumberText: { color: Colors.primaryLight, fontSize: 13, fontWeight: "900" },
   stepText: { flex: 1, color: Colors.textSecondary, fontSize: 14, lineHeight: 20, paddingTop: 3 },
-  warningCard: { flexDirection: "row", backgroundColor: "#FFF7ED", borderRadius: 18, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: "#FED7AA" },
+  warningCard: { flexDirection: "row", backgroundColor: "#2A2117", borderRadius: 18, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: "#5A3A18" },
   warningCopy: { flex: 1, marginLeft: 12 },
-  warningTitle: { color: "#92400E", fontSize: 16, fontWeight: "900", marginBottom: 5 },
-  warningItem: { color: "#92400E", fontSize: 13, lineHeight: 19 },
-  tipCard: { flexDirection: "row", backgroundColor: Colors.surfaceLight, borderRadius: 18, padding: 16, borderWidth: 1, borderColor: "#E4D9FF" },
+  warningTitle: { color: "#FBBF24", fontSize: 16, fontWeight: "900", marginBottom: 5 },
+  warningItem: { color: "#FCD34D", fontSize: 13, lineHeight: 19 },
+  tipCard: { flexDirection: "row", backgroundColor: Colors.primarySoft, borderRadius: 18, padding: 16, borderWidth: 1, borderColor: Colors.borderStrong },
   tipCopy: { flex: 1, marginLeft: 12 },
-  tipTitle: { color: Colors.primaryDark, fontSize: 16, fontWeight: "900" },
+  tipTitle: { color: Colors.primaryLight, fontSize: 16, fontWeight: "900" },
   tipText: { color: Colors.textSecondary, fontSize: 13, lineHeight: 19, marginTop: 5 },
 });
