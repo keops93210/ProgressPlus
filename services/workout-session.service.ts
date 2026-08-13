@@ -2,17 +2,71 @@ import { supabase } from "@/lib/supabase";
 
 export async function startWorkoutSession(userId: string | null, programId: string) {
   if (!userId) throw new Error("Utilisateur non connecté.");
-  const { data: activeSession, error: activeError } = await supabase.from("workout_sessions").select("*").eq("user_id", userId).eq("program_id", programId).is("finished_at", null).order("started_at", { ascending: false }).limit(1).maybeSingle();
+
+  const { data: activeSession, error: activeError } = await supabase
+    .from("workout_sessions")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("program_id", programId)
+    .is("finished_at", null)
+    .order("started_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
   if (activeError) throw activeError;
-  if (activeSession) return activeSession;
-  const { data, error } = await supabase.from("workout_sessions").insert({ user_id: userId, program_id: programId }).select().single();
+
+  if (activeSession) {
+    const [{ data: plannedExercises, error: plannedError }, { data: completedSets, error: setsError }] = await Promise.all([
+      supabase.from("program_exercises").select("id, sets").eq("program_id", programId),
+      supabase.from("workout_sets").select("id").eq("session_id", activeSession.id).eq("completed", true),
+    ]);
+    if (plannedError) throw plannedError;
+    if (setsError) throw setsError;
+
+    const plannedSetCount = (plannedExercises ?? []).reduce((sum, item) => sum + Number(item.sets || 0), 0);
+    const completedSetCount = completedSets?.length ?? 0;
+
+    if (plannedSetCount > 0 && completedSetCount >= plannedSetCount) {
+      const duration = Math.max(0, Math.floor((Date.now() - new Date(activeSession.started_at).getTime()) / 1000));
+      const { error: closeError } = await supabase
+        .from("workout_sessions")
+        .update({
+          finished_at: new Date().toISOString(),
+          duration_seconds: activeSession.duration_seconds ?? duration,
+          total_volume: activeSession.total_volume ?? 0,
+          total_sets: activeSession.total_sets ?? completedSetCount,
+        })
+        .eq("id", activeSession.id)
+        .is("finished_at", null);
+      if (closeError) throw closeError;
+    } else {
+      return activeSession;
+    }
+  }
+
+  const { data, error } = await supabase
+    .from("workout_sessions")
+    .insert({ user_id: userId, program_id: programId })
+    .select()
+    .single();
   if (error) throw error;
   return data;
 }
 
 export async function finishWorkoutSession(sessionId: string, duration: number, volume: number, totalSets: number) {
-  const { error } = await supabase.from("workout_sessions").update({ finished_at: new Date().toISOString(), duration_seconds: duration, total_volume: volume, total_sets: totalSets }).eq("id", sessionId).is("finished_at", null);
+  const { data, error } = await supabase
+    .from("workout_sessions")
+    .update({
+      finished_at: new Date().toISOString(),
+      duration_seconds: duration,
+      total_volume: volume,
+      total_sets: totalSets,
+    })
+    .eq("id", sessionId)
+    .is("finished_at", null)
+    .select("id")
+    .single();
   if (error) throw error;
+  if (!data?.id) throw new Error("La séance n'a pas pu être clôturée.");
 }
 
 export async function saveWorkoutSet(sessionId: string, exerciseId: string, setNumber: number, weight: number, reps: number) {
