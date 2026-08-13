@@ -1,0 +1,127 @@
+name: Fix workout session lifecycle
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Patch workout session lifecycle
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path("services/workout-session.service.ts")
+          text = path.read_text(encoding="utf-8")
+
+          old_start = '''export async function startWorkoutSession(userId: string | null, programId: string) {
+            if (!userId) throw new Error("Utilisateur non connecté.");
+            const { data: activeSession, error: activeError } = await supabase.from("workout_sessions").select("*").eq("user_id", userId).eq("program_id", programId).is("finished_at", null).order("started_at", { ascending: false }).limit(1).maybeSingle();
+            if (activeError) throw activeError;
+            if (activeSession) return activeSession;
+            const { data, error } = await supabase.from("workout_sessions").insert({ user_id: userId, program_id: programId }).select().single();
+            if (error) throw error;
+            return data;
+          }'''
+
+          new_start = '''export async function startWorkoutSession(userId: string | null, programId: string) {
+            if (!userId) throw new Error("Utilisateur non connecté.");
+
+            const { data: activeSession, error: activeError } = await supabase
+              .from("workout_sessions")
+              .select("*")
+              .eq("user_id", userId)
+              .eq("program_id", programId)
+              .is("finished_at", null)
+              .order("started_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            if (activeError) throw activeError;
+
+            if (activeSession) {
+              const [{ data: plannedExercises, error: plannedError }, { data: completedSets, error: setsError }] = await Promise.all([
+                supabase.from("program_exercises").select("id, sets").eq("program_id", programId),
+                supabase.from("workout_sets").select("id").eq("session_id", activeSession.id).eq("completed", true),
+              ]);
+              if (plannedError) throw plannedError;
+              if (setsError) throw setsError;
+
+              const plannedSetCount = (plannedExercises ?? []).reduce((sum, item) => sum + Number(item.sets || 0), 0);
+              const completedSetCount = completedSets?.length ?? 0;
+
+              if (plannedSetCount > 0 && completedSetCount >= plannedSetCount) {
+                const duration = Math.max(0, Math.floor((Date.now() - new Date(activeSession.started_at).getTime()) / 1000));
+                const { error: closeError } = await supabase
+                  .from("workout_sessions")
+                  .update({
+                    finished_at: new Date().toISOString(),
+                    duration_seconds: activeSession.duration_seconds ?? duration,
+                    total_volume: activeSession.total_volume ?? 0,
+                    total_sets: activeSession.total_sets ?? completedSetCount,
+                  })
+                  .eq("id", activeSession.id)
+                  .is("finished_at", null);
+                if (closeError) throw closeError;
+              } else {
+                return activeSession;
+              }
+            }
+
+            const { data, error } = await supabase
+              .from("workout_sessions")
+              .insert({ user_id: userId, program_id: programId })
+              .select()
+              .single();
+            if (error) throw error;
+            return data;
+          }'''
+
+          if old_start not in text:
+              raise SystemExit("Expected startWorkoutSession block not found")
+          text = text.replace(old_start, new_start, 1)
+
+          old_finish = '''export async function finishWorkoutSession(sessionId: string, duration: number, volume: number, totalSets: number) {
+            const { error } = await supabase.from("workout_sessions").update({ finished_at: new Date().toISOString(), duration_seconds: duration, total_volume: volume, total_sets: totalSets }).eq("id", sessionId).is("finished_at", null);
+            if (error) throw error;
+          }'''
+
+          new_finish = '''export async function finishWorkoutSession(sessionId: string, duration: number, volume: number, totalSets: number) {
+            const { data, error } = await supabase
+              .from("workout_sessions")
+              .update({
+                finished_at: new Date().toISOString(),
+                duration_seconds: duration,
+                total_volume: volume,
+                total_sets: totalSets,
+              })
+              .eq("id", sessionId)
+              .is("finished_at", null)
+              .select("id")
+              .single();
+            if (error) throw error;
+            if (!data?.id) throw new Error("La séance n'a pas pu être clôturée.");
+          }'''
+
+          if old_finish not in text:
+              raise SystemExit("Expected finishWorkoutSession block not found")
+          text = text.replace(old_finish, new_finish, 1)
+          path.write_text(text, encoding="utf-8")
+
+      - name: Commit and remove temporary workflow
+        shell: bash
+        run: |
+          rm .github/workflows/fix-workout-session.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add services/workout-session.service.ts .github/workflows/fix-workout-session.yml
+          git diff --cached --quiet && exit 0
+          git commit -m "fix: start fresh workout session after completion"
+          git push origin main
