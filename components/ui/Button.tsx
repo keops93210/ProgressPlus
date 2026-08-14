@@ -6,8 +6,7 @@ import {
   ViewStyle,
 } from "react-native";
 
-import Colors from "@/constants/colors";
-import Radius from "@/constants/radius";
+import Design from "@/constants/design";
 
 interface ButtonProps {
   title: string;
@@ -33,12 +32,7 @@ export default function Button({
         pressed && !disabled && styles.pressed,
       ]}
     >
-      <Text
-        style={[
-          styles.text,
-          disabled && styles.disabledText,
-        ]}
-      >
+      <Text style={[styles.text, disabled && styles.disabledText]}>
         {title}
       </Text>
     </Pressable>
@@ -47,43 +41,32 @@ export default function Button({
 
 const styles = StyleSheet.create({
   button: {
-    height: 58,
-    borderRadius: Radius.lg,
-
-    backgroundColor: Colors.primary,
-
+    minHeight: Design.control.buttonHeight,
+    borderRadius: Design.radius.md,
+    paddingHorizontal: Design.spacing.xl,
+    backgroundColor: Design.colors.primary,
     justifyContent: "center",
     alignItems: "center",
-
-    shadowColor: Colors.primary,
-    shadowOpacity: 0.45,
-    shadowRadius: 18,
-    shadowOffset: {
-      width: 0,
-      height: 0,
-    },
-
-    elevation: 10,
+    ...Design.elevation.floating,
   },
 
   disabled: {
-    backgroundColor: "#3A3A3A",
+    backgroundColor: Design.colors.surfaceElevated,
     shadowOpacity: 0,
     elevation: 0,
   },
 
   pressed: {
-    opacity: 0.85,
-    transform: [{ scale: 0.98 }],
+    opacity: 0.9,
+    transform: [{ scale: 0.985 }],
   },
 
   text: {
-    color: Colors.background,
-    fontSize: 18,
-    fontWeight: "700",
+    color: Design.colors.textOnPrimary,
+    ...Design.typography.bodyStrong,
   },
 
   disabledText: {
-    color: "#888888",
+    color: Design.colors.textMuted,
   },
 });
