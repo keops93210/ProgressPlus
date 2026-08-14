@@ -8,110 +8,71 @@ type Props = { result: GlobalScoreView; onPress?: () => void; performanceScore?:
 
 function getGuidance(items: readonly (readonly [string, number | null])[]) {
   const available = items.filter(([, value]) => typeof value === "number") as [string, number][];
-  if (!available.length) return "Complète tes données pour obtenir une analyse personnalisée.";
+  if (!available.length) return "Complète tes données pour débloquer ton analyse personnalisée.";
   const weakest = [...available].sort((a, b) => a[1] - b[1])[0];
-  if (weakest[1] < 55) return `Ton prochain levier : ${weakest[0]}.`;
+  if (weakest[1] < 60) return `Ton prochain levier : ${weakest[0]}. On peut gagner des points ici.`;
   const strongest = [...available].sort((a, b) => b[1] - a[1])[0];
-  return `Point fort : ${strongest[0]}. Continue à construire ta progression.`;
+  return `Point fort : ${strongest[0]}. Continue à progresser sans négliger le reste.`;
 }
 
 export function GlobalProgressHero({ result, onPress, performanceScore, recoveryScore, transformationScore, consistencyScore }: Props) {
-  const score = result.score;
+  const score = result.score == null ? 0 : Math.round(result.score);
   const pillars = result.pillarScores;
-  const items = [
-    ["Corps", transformationScore ?? pillars?.transformation ?? null],
-    ["Performance", performanceScore ?? pillars?.performance ?? null],
-    ["Récupération", recoveryScore ?? pillars?.recovery ?? null],
-    ["Régularité", consistencyScore ?? pillars?.consistency ?? null],
-  ] as const;
-  const width = `${Math.max(0, Math.min(100, score ?? 0))}%` as `${number}%`;
-  const delta = result.previousScore == null || score == null ? null : score - result.previousScore;
+  const items = [["Corps", transformationScore ?? pillars?.transformation ?? null], ["Performance", performanceScore ?? pillars?.performance ?? null], ["Récupération", recoveryScore ?? pillars?.recovery ?? null], ["Régularité", consistencyScore ?? pillars?.consistency ?? null]] as const;
+  const delta = result.previousScore == null || result.score == null ? null : Math.round(result.score - result.previousScore);
   const guidance = getGuidance(items);
-  const chartHeights = [28, 36, 31, 48, 42, 59, 68];
 
-  return (
-    <TouchableOpacity style={styles.card} activeOpacity={0.94} onPress={onPress}>
-      <View style={styles.heroRow}>
-        <View style={styles.heroCopy}>
-          <View style={styles.kickerRow}>
-            <View style={styles.icon}><Sparkles color={Design.colors.primaryLight} size={16} /></View>
-            <Text style={styles.eyebrow}>PROGRESS+ INSIGHT</Text>
-          </View>
-          <Text style={styles.title}>{score == null ? "Construisons ta progression" : result.label}</Text>
-          <Text style={styles.subtitle}>{guidance}</Text>
-        </View>
-        <View style={styles.scoreWrap}>
-          <Text style={styles.score}>{score == null ? "—" : score}</Text>
-          <Text style={styles.scoreUnit}>/100</Text>
-        </View>
+  return <TouchableOpacity style={styles.card} activeOpacity={0.94} onPress={onPress}>
+    <View style={styles.glow} />
+    <View style={styles.header}>
+      <View style={styles.heading}>
+        <View style={styles.kickerRow}><View style={styles.spark}><Sparkles color={Design.colors.primaryLight} size={13} /></View><Text style={styles.eyebrow}>PROGRESS+ SCORE</Text></View>
+        <Text style={styles.title}>{score ? result.label : "Construisons ton score"}</Text>
+        <Text style={styles.subtitle}>Ta progression globale, en un seul regard.</Text>
       </View>
-
-      <View style={styles.track}><View style={[styles.fill, { width }]} /></View>
-
-      <View style={styles.metricGrid}>
-        {items.map(([label, value]) => (
-          <View key={label} style={styles.metricCard}>
-            <Text style={styles.metricLabel}>{label}</Text>
-            <Text style={styles.metricValue}>{value == null ? "—" : Math.round(value)}</Text>
-          </View>
-        ))}
-      </View>
-
-      <View style={styles.chartHeader}>
-        <View>
-          <Text style={styles.chartKicker}>ÉVOLUTION</Text>
-          <Text style={styles.chartTitle}>Ta tendance</Text>
-        </View>
-        {delta != null ? (
-          <View style={styles.delta}>
-            {delta >= 0 ? <TrendingUp size={13} color={Design.colors.success} /> : <TrendingDown size={13} color={Design.colors.danger} />}
-            <Text style={[styles.deltaText, delta >= 0 ? styles.success : styles.danger]}>{delta >= 0 ? "+" : ""}{delta} pts</Text>
-          </View>
-        ) : null}
-      </View>
-
-      <View style={styles.chart}>
-        {chartHeights.map((height, index) => <View key={index} style={styles.chartColumn}><View style={[styles.chartBar, { height }]} /></View>)}
-      </View>
-
-      <View style={styles.footer}>
-        <Text style={styles.meta}>{result.available}/4 piliers · confiance {result.confidence}%</Text>
-        <View style={styles.open}><Text style={styles.openText}>Voir l'analyse</Text><ChevronRight color={Design.colors.primaryLight} size={15} /></View>
-      </View>
-    </TouchableOpacity>
-  );
+      <View style={styles.scoreRing}><View style={styles.scoreInner}><Text style={styles.score}>{score || "—"}</Text><Text style={styles.scoreCaption}>/100</Text></View></View>
+    </View>
+    <View style={styles.progressMeta}><Text style={styles.progressLabel}>PROGRESSION</Text><Text style={styles.progressValue}>{score}%</Text></View>
+    <View style={styles.track}><View style={[styles.fill, { width: `${score}%` as `${number}%` }]} /></View>
+    <View style={styles.pillars}>{items.map(([label, value]) => <View key={label} style={styles.pillar}><Text style={styles.pillarLabel}>{label}</Text><Text style={styles.pillarValue}>{value == null ? "—" : Math.round(value)}</Text><View style={styles.pillarTrack}><View style={[styles.pillarFill, { width: `${Math.min(100, Math.max(0, value ?? 0))}%` as `${number}%` }]} /></View></View>)}</View>
+    <View style={styles.insight}>
+      <View style={styles.insightIcon}><Sparkles color={Design.colors.primaryLight} size={13} /></View>
+      <View style={styles.insightCopy}><Text style={styles.insightLabel}>COACH PROGRESS+</Text><Text style={styles.insightText}>{guidance}</Text></View>
+      {delta != null ? <View style={styles.delta}>{delta >= 0 ? <TrendingUp color={Design.colors.success} size={13} /> : <TrendingDown color={Design.colors.danger} size={13} />}<Text style={[styles.deltaText, { color: delta >= 0 ? Design.colors.success : Design.colors.danger }]}>{delta >= 0 ? "+" : ""}{delta}</Text></View> : <ChevronRight color={Design.colors.primaryLight} size={17} />}
+    </View>
+  </TouchableOpacity>;
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: Design.colors.surface, borderRadius: 22, borderWidth: 1, borderColor: Design.colors.border, padding: 16, ...Design.elevation.card },
-  heroRow: { flexDirection: "row", alignItems: "center" },
-  heroCopy: { flex: 1, paddingRight: 10 },
-  kickerRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  icon: { width: 32, height: 32, borderRadius: 10, backgroundColor: Design.colors.primarySoft, alignItems: "center", justifyContent: "center" },
+  card: { backgroundColor: "#15141C", borderRadius: 24, borderWidth: 1, borderColor: "#7047E8", padding: 18, overflow: "hidden", ...Design.elevation.card },
+  glow: { position: "absolute", width: 220, height: 220, borderRadius: 110, backgroundColor: "#4B1FA820", top: -125, right: -70 },
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  heading: { flex: 1, paddingRight: 14 },
+  kickerRow: { flexDirection: "row", alignItems: "center", gap: 7 },
+  spark: { width: 25, height: 25, borderRadius: 8, backgroundColor: "#2A194A", alignItems: "center", justifyContent: "center" },
   eyebrow: { color: Design.colors.primaryLight, ...Design.typography.eyebrow },
-  title: { color: Design.colors.text, ...Design.typography.h3, marginTop: 8 },
-  subtitle: { color: Design.colors.textSecondary, fontSize: 10, lineHeight: 15, marginTop: 4 },
-  scoreWrap: { alignItems: "flex-end", justifyContent: "center", minWidth: 72 },
-  score: { color: Design.colors.primaryLight, fontSize: 42, lineHeight: 43, fontWeight: "900", letterSpacing: -1.8 },
-  scoreUnit: { color: Design.colors.textMuted, fontSize: 9, fontWeight: "800", marginTop: -2 },
-  track: { height: 6, backgroundColor: Design.colors.background, borderRadius: 3, overflow: "hidden", marginTop: 14 },
-  fill: { height: "100%", backgroundColor: Design.colors.primary, borderRadius: 3 },
-  metricGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 12 },
-  metricCard: { width: "48.8%", minHeight: 54, backgroundColor: Design.colors.background, borderRadius: 12, borderWidth: 1, borderColor: Design.colors.border, paddingHorizontal: 12, paddingVertical: 9, justifyContent: "center" },
-  metricLabel: { color: Design.colors.textMuted, fontSize: 8, fontWeight: "800" },
-  metricValue: { color: Design.colors.text, fontSize: 18, fontWeight: "900", marginTop: 2 },
-  chartHeader: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", marginTop: 15 },
-  chartKicker: { color: Design.colors.textMuted, fontSize: 8, fontWeight: "900", letterSpacing: 1.1 },
-  chartTitle: { color: Design.colors.text, fontSize: 13, fontWeight: "900", marginTop: 2 },
-  delta: { flexDirection: "row", alignItems: "center", gap: 4 },
+  title: { color: "#FFFFFF", fontSize: 20, fontWeight: "900", marginTop: 9 },
+  subtitle: { color: "#8E8B99", fontSize: 10, marginTop: 4 },
+  scoreRing: { width: 88, height: 88, borderRadius: 44, borderWidth: 8, borderColor: "#7C4EF0", backgroundColor: "#1A1625", alignItems: "center", justifyContent: "center" },
+  scoreInner: { alignItems: "center", justifyContent: "center" },
+  score: { color: "#FFFFFF", fontSize: 28, fontWeight: "900", lineHeight: 30 },
+  scoreCaption: { color: "#9D94B0", fontSize: 9, fontWeight: "800" },
+  progressMeta: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 18 },
+  progressLabel: { color: "#777481", fontSize: 8, fontWeight: "900", letterSpacing: 1.1 },
+  progressValue: { color: Design.colors.primaryLight, fontSize: 11, fontWeight: "900" },
+  track: { height: 7, backgroundColor: "#292733", borderRadius: 4, overflow: "hidden", marginTop: 6 },
+  fill: { height: "100%", backgroundColor: "#8B58F4", borderRadius: 4 },
+  pillars: { flexDirection: "row", gap: 8, marginTop: 12 },
+  pillar: { flex: 1, backgroundColor: "#0D0D12", borderRadius: 12, padding: 10, borderWidth: 1, borderColor: "#292732" },
+  pillarLabel: { color: "#85818D", fontSize: 8, fontWeight: "800" },
+  pillarValue: { color: "#FFFFFF", fontSize: 17, fontWeight: "900", marginTop: 4 },
+  pillarTrack: { height: 3, backgroundColor: "#292733", borderRadius: 2, overflow: "hidden", marginTop: 7 },
+  pillarFill: { height: "100%", backgroundColor: "#7F4CEB", borderRadius: 2 },
+  insight: { marginTop: 12, backgroundColor: "#0D0D12", borderRadius: 14, borderWidth: 1, borderColor: "#282631", padding: 10, flexDirection: "row", alignItems: "center" },
+  insightIcon: { width: 28, height: 28, borderRadius: 9, backgroundColor: "#24163F", alignItems: "center", justifyContent: "center" },
+  insightCopy: { flex: 1, marginLeft: 9 },
+  insightLabel: { color: Design.colors.primaryLight, fontSize: 7, fontWeight: "900", letterSpacing: 1 },
+  insightText: { color: "#C0BDC7", fontSize: 9, fontWeight: "700", marginTop: 2, lineHeight: 13 },
+  delta: { flexDirection: "row", alignItems: "center", gap: 2, marginLeft: 8 },
   deltaText: { fontSize: 10, fontWeight: "900" },
-  success: { color: Design.colors.success },
-  danger: { color: Design.colors.danger },
-  chart: { height: 72, marginTop: 8, flexDirection: "row", alignItems: "flex-end", gap: 5, borderBottomWidth: 1, borderBottomColor: Design.colors.border, paddingHorizontal: 3 },
-  chartColumn: { flex: 1, height: "100%", justifyContent: "flex-end" },
-  chartBar: { width: "100%", maxWidth: 16, alignSelf: "center", backgroundColor: Design.colors.primary, borderTopLeftRadius: 5, borderTopRightRadius: 5, opacity: 0.88 },
-  footer: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 11 },
-  meta: { color: Design.colors.textMuted, fontSize: 9, fontWeight: "700" },
-  open: { flexDirection: "row", alignItems: "center", gap: 2 },
-  openText: { color: Design.colors.primaryLight, fontSize: 10, fontWeight: "900" },
 });
