@@ -12,31 +12,45 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Patch service
-        shell: python
+        shell: bash
         run: |
+          python3 <<'PY'
           from pathlib import Path
+
           path = Path("services/workout-session.service.ts")
           text = path.read_text(encoding="utf-8")
+
           old = '''export async function saveWorkoutSet(sessionId: string, exerciseId: string, setNumber: number, weight: number, reps: number) {
-  if (weight <= 0 || reps <= 0 || setNumber <= 0) throw new Error("Les valeurs de la série sont invalides.");
-  const { data: existingSet, error: existingError } = await supabase.from("workout_sets").select("id, weight, reps").eq("session_id", sessionId).eq("exercise_id", exerciseId).eq("set_number", setNumber).maybeSingle();'''
+            if (weight <= 0 || reps <= 0 || setNumber <= 0) throw new Error("Les valeurs de la série sont invalides.");
+            const { data: existingSet, error: existingError } = await supabase.from("workout_sets").select("id, weight, reps").eq("session_id", sessionId).eq("exercise_id", exerciseId).eq("set_number", setNumber).maybeSingle();'''
+
           new = '''export async function saveWorkoutSet(sessionId: string, exerciseId: string, setNumber: number, weight: number, reps: number) {
-  if (weight <= 0 || reps <= 0 || setNumber <= 0) throw new Error("Les valeurs de la série sont invalides.");
+            if (weight <= 0 || reps <= 0 || setNumber <= 0) throw new Error("Les valeurs de la série sont invalides.");
 
-  const { data: session, error: sessionError } = await supabase
-    .from("workout_sessions")
-    .select("id, finished_at")
-    .eq("id", sessionId)
-    .single();
-  if (sessionError) throw sessionError;
-  if (session.finished_at) throw new Error("Cette séance est déjà terminée.");
+            const { data: session, error: sessionError } = await supabase
+              .from("workout_sessions")
+              .select("id, finished_at")
+              .eq("id", sessionId)
+              .single();
+            if (sessionError) throw sessionError;
+            if (session.finished_at) throw new Error("Cette séance est déjà terminée.");
 
-  const { data: existingSet, error: existingError } = await supabase.from("workout_sets").select("id, weight, reps").eq("session_id", sessionId).eq("exercise_id", exerciseId).eq("set_number", setNumber).maybeSingle();'''
+            const { data: existingSet, error: existingError } = await supabase.from("workout_sets").select("id, weight, reps").eq("session_id", sessionId).eq("exercise_id", exerciseId).eq("set_number", setNumber).maybeSingle();'''
+
           if old not in text:
               raise SystemExit("Expected saveWorkoutSet block not found")
+
           path.write_text(text.replace(old, new, 1), encoding="utf-8")
-      - name: Commit and remove workflow
+          PY
+
+      - name: Verify patch
+        shell: bash
+        run: |
+          grep -q 'Cette séance est déjà terminée.' services/workout-session.service.ts
+
+      - name: Commit patch and remove workflow
         shell: bash
         run: |
           rm .github/workflows/harden-workout-set-save.yml
