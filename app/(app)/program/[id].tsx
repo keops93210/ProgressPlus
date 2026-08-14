@@ -71,7 +71,10 @@ export default function ProgramScreen() {
   const startWorkout = () => {
     if (!id || exercises.length === 0) return;
 
-    router.push({
+    // Replace the program screen instead of stacking another workout-session.
+    // This prevents returning to the previous completed session when the same
+    // program is started again.
+    router.replace({
       pathname: "/workout-session",
       params: { programId: String(id) },
     });
