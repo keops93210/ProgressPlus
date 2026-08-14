@@ -71,6 +71,15 @@ export async function finishWorkoutSession(sessionId: string, duration: number, 
 
 export async function saveWorkoutSet(sessionId: string, exerciseId: string, setNumber: number, weight: number, reps: number) {
   if (weight <= 0 || reps <= 0 || setNumber <= 0) throw new Error("Les valeurs de la série sont invalides.");
+
+  const { data: session, error: sessionError } = await supabase
+    .from("workout_sessions")
+    .select("id, finished_at")
+    .eq("id", sessionId)
+    .single();
+  if (sessionError) throw sessionError;
+  if (session.finished_at) throw new Error("Cette séance est déjà terminée.");
+
   const { data: existingSet, error: existingError } = await supabase.from("workout_sets").select("id, weight, reps").eq("session_id", sessionId).eq("exercise_id", exerciseId).eq("set_number", setNumber).maybeSingle();
   if (existingError) throw existingError;
   const isNew = !existingSet;
