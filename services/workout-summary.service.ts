@@ -55,7 +55,18 @@ export async function getWorkoutSummary(sessionId: string): Promise<WorkoutSumma
   const hardSets = rirValues.filter((value) => value <= 1).length;
   const failureSets = rirValues.filter((value) => value <= 0).length;
 
-  const { data: previousSessions, error: previousError } = await supabase.from("workout_sessions").select("id, total_volume, duration_seconds, finished_at").eq("user_id", session.user_id).not("finished_at", "is", null).lt("finished_at", session.finished_at ?? new Date().toISOString()).order("finished_at", { ascending: false }).limit(1);
+  let previousQuery = supabase
+    .from("workout_sessions")
+    .select("id, total_volume, duration_seconds, finished_at")
+    .eq("user_id", session.user_id)
+    .not("finished_at", "is", null)
+    .lt("finished_at", session.finished_at ?? new Date().toISOString())
+    .order("finished_at", { ascending: false })
+    .limit(1);
+
+  if (session.program_id) previousQuery = previousQuery.eq("program_id", session.program_id);
+
+  const { data: previousSessions, error: previousError } = await previousQuery;
   if (previousError) throw previousError;
   const previous = previousSessions?.[0] ?? null;
   const previousVolume = previous ? Number(previous.total_volume ?? 0) : null;
@@ -76,7 +87,13 @@ export async function getWorkoutSummary(sessionId: string): Promise<WorkoutSumma
   const personalRecordExercises = new Set<string>();
   for (const row of sets ?? []) {
     const estimated1rm = Number(row.weight) * (1 + Number(row.reps) / 30);
-    let query = supabase.from("personal_records").select("exercise_id, estimated_1rm, created_at").eq("user_id", session.user_id).eq("exercise_id", row.exercise_id).limit(1);
+    let query = supabase
+      .from("personal_records")
+      .select("exercise_id, estimated_1rm, created_at")
+      .eq("user_id", session.user_id)
+      .eq("exercise_id", row.exercise_id)
+      .order("created_at", { ascending: false })
+      .limit(1);
     if (session.started_at) query = query.lt("created_at", session.started_at);
     const { data: records } = await query;
     const record = records?.[0];
