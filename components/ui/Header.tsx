@@ -5,7 +5,7 @@ import {
   View,
 } from "react-native";
 
-import Colors from "@/constants/colors";
+import Design from "@/constants/design";
 
 interface HeaderProps {
   title: string;
@@ -13,30 +13,16 @@ interface HeaderProps {
   right?: ReactNode;
 }
 
-export default function Header({
-  title,
-  subtitle,
-  right,
-}: HeaderProps) {
+export default function Header({ title, subtitle, right }: HeaderProps) {
   return (
     <View style={styles.container}>
       <View style={styles.left}>
-        <Text style={styles.title}>
-          {title}
-        </Text>
-
-        {subtitle ? (
-          <Text style={styles.subtitle}>
-            {subtitle}
-          </Text>
-        ) : null}
+        <Text style={styles.eyebrow}>PROGRESS+</Text>
+        <Text style={styles.title}>{title}</Text>
+        {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
       </View>
 
-      {right ? (
-        <View>
-          {right}
-        </View>
-      ) : null}
+      {right ? <View style={styles.right}>{right}</View> : null}
     </View>
   );
 }
@@ -45,25 +31,30 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-
-    marginBottom: 24,
+    alignItems: "flex-start",
+    marginBottom: Design.spacing.section,
   },
-
   left: {
     flex: 1,
+    paddingRight: Design.spacing.md,
   },
-
+  eyebrow: {
+    color: Design.colors.primaryLight,
+    ...Design.typography.eyebrow,
+    marginBottom: Design.spacing.sm,
+  },
   title: {
-    color: Colors.text,
-    fontSize: 34,
-    fontWeight: "800",
+    color: Design.colors.text,
+    ...Design.typography.h1,
   },
-
   subtitle: {
-    marginTop: 6,
-
-    color: Colors.textSecondary,
-    fontSize: 15,
+    marginTop: Design.spacing.sm,
+    color: Design.colors.textSecondary,
+    ...Design.typography.body,
+  },
+  right: {
+    minHeight: Design.control.iconButton,
+    justifyContent: "center",
+    alignItems: "center",
   },
 });
