@@ -1,11 +1,13 @@
 import { router } from "expo-router";
 import { useState } from "react";
 import {
-    Alert,
-    SafeAreaView,
-    StyleSheet,
-    Text,
-    TextInput,
+  Alert,
+  Pressable,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
 
 import Button from "@/components/ui/Button";
@@ -33,37 +35,52 @@ export default function LoginScreen() {
     }
 
     Alert.alert("Bienvenue 👋", "Connexion réussie !");
-
     router.replace("/(app)/home");
   }
 
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Connexion</Text>
+      <View style={styles.content}>
+        <Text style={styles.eyebrow}>PROGRESS+</Text>
+        <Text style={styles.title}>Connexion</Text>
+        <Text style={styles.subtitle}>Reprends là où tu t'es arrêté.</Text>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        placeholderTextColor="#777"
-        keyboardType="email-address"
-        autoCapitalize="none"
-        value={email}
-        onChangeText={setEmail}
-      />
+        <TextInput
+          style={styles.input}
+          placeholder="Email"
+          placeholderTextColor="#777"
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
+          value={email}
+          onChangeText={setEmail}
+        />
 
-      <TextInput
-        style={styles.input}
-        placeholder="Mot de passe"
-        placeholderTextColor="#777"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-      />
+        <TextInput
+          style={styles.input}
+          placeholder="Mot de passe"
+          placeholderTextColor="#777"
+          secureTextEntry
+          value={password}
+          onChangeText={setPassword}
+        />
 
-      <Button
-        title="Se connecter"
-        onPress={handleLogin}
-      />
+        <Pressable
+          onPress={() => router.push("/(auth)/forgot-password")}
+          style={({ pressed }) => [styles.forgot, pressed && styles.pressed]}
+        >
+          <Text style={styles.forgotText}>Mot de passe oublié ?</Text>
+        </Pressable>
+
+        <Button title="Se connecter" onPress={handleLogin} />
+
+        <Pressable
+          onPress={() => router.back()}
+          style={({ pressed }) => [styles.back, pressed && styles.pressed]}
+        >
+          <Text style={styles.backText}>← Retour</Text>
+        </Pressable>
+      </View>
     </SafeAreaView>
   );
 }
@@ -75,14 +92,29 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     padding: 24,
   },
-
+  content: {
+    width: "100%",
+    maxWidth: 520,
+    alignSelf: "center",
+  },
+  eyebrow: {
+    color: Colors.primaryLight,
+    fontSize: 11,
+    fontWeight: "900",
+    letterSpacing: 2,
+    marginBottom: 10,
+  },
   title: {
     color: Colors.text,
-    fontSize: 34,
-    fontWeight: "800",
-    marginBottom: 40,
+    fontSize: 36,
+    fontWeight: "900",
   },
-
+  subtitle: {
+    color: Colors.textSecondary,
+    fontSize: 15,
+    marginTop: 8,
+    marginBottom: 30,
+  },
   input: {
     height: 56,
     borderRadius: 16,
@@ -92,6 +124,30 @@ const styles = StyleSheet.create({
     color: Colors.text,
     paddingHorizontal: 16,
     fontSize: 16,
-    marginBottom: 16,
+    marginBottom: 14,
+  },
+  forgot: {
+    alignSelf: "flex-end",
+    paddingVertical: 4,
+    paddingHorizontal: 2,
+    marginBottom: 18,
+  },
+  forgotText: {
+    color: Colors.primaryLight,
+    fontSize: 14,
+    fontWeight: "800",
+  },
+  back: {
+    alignSelf: "center",
+    marginTop: 22,
+    padding: 8,
+  },
+  backText: {
+    color: Colors.textSecondary,
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  pressed: {
+    opacity: 0.65,
   },
 });
