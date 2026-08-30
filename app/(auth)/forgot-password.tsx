@@ -1,6 +1,6 @@
-import { Linking } from "react-native";
-import { useState } from "react";
+import * as Linking from "expo-linking";
 import { router } from "expo-router";
+import { useState } from "react";
 import { Alert, Pressable, SafeAreaView, StyleSheet, Text, TextInput, View } from "react-native";
 
 import Button from "@/components/ui/Button";
