@@ -99,7 +99,7 @@ export default function ResetPasswordScreen() {
             <Text style={styles.subtitle}>
               Ce lien est invalide ou a expiré. Demande un nouveau lien depuis l'écran de connexion.
             </Text>
-            <Button title="Demander un nouveau lien" onPress={() => router.replace("/(auth)/forgot-password")} />
+            <Button title="Demander un nouveau lien" onPress={() => router.replace("/forgot-password")} />
           </>
         ) : (
           <>
