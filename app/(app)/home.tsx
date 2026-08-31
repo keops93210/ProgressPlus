@@ -1,2 +1,2 @@
 // Progress+ premium home entrypoint.
-export { default } from "./home-v04-premium";
+export { default } from "./home-v05-premium";
