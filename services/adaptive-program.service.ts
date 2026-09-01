@@ -92,7 +92,7 @@ function preferences(goal: ProgramGoal, level: ProgramLevel) {
 function settings(goal: ProgramGoal, level: ProgramLevel) {
   if (goal === "strength") return { sets: level === "beginner" ? 3 : 4, minReps: 4, maxReps: 6, rest: 180 };
   if (goal === "fat_loss") return { sets: 3, minReps: 8, maxReps: 12, rest: 90 };
-  return { sets: level === "beginner" ? 3 : 3, minReps: 8, maxReps: 12, rest: 120 };
+  return { sets: 3, minReps: 8, maxReps: 12, rest: 120 };
 }
 
 function splitMuscles(split: string) {
@@ -118,6 +118,8 @@ export async function buildAdaptiveProgram(input: AdaptiveProgramInput): Promise
   const config = settings(input.goal, input.level);
   const split = SPLITS[input.daysPerWeek] ?? SPLITS[3];
   const used = new Set<string>();
+  const maxExercises = input.sessionMinutes === 45 ? 5 : 7;
+
   const days = split.map((parts, index) => {
     const preferred = parts.flatMap(splitMuscles);
     const fallback = preferences(input.goal, input.level);
@@ -133,7 +135,7 @@ export async function buildAdaptiveProgram(input: AdaptiveProgramInput): Promise
         selected.push(candidate);
         used.add(candidate.id);
       }
-      if (selected.length >= (input.sessionMinutes ?? 75) <= 45 ? 5 : 7) break;
+      if (selected.length >= maxExercises) break;
     }
 
     return {
@@ -161,20 +163,22 @@ function splitName(split: string, index: number) {
   return `${names[split] ?? "Séance"} ${index + 1}`;
 }
 
-export async function createAdaptiveProgram(input: AdaptiveProgramInput) {
+/**
+ * Persists the generated sessions using the current data model, where each
+ * workout program is a standalone routine. A future program-plan table can
+ * group these routines without changing the generator itself.
+ */
+export async function createAdaptiveProgramPack(input: AdaptiveProgramInput) {
   const draft = await buildAdaptiveProgram(input);
-  const program = await createProgram(input.userId, draft.name, draft.description);
-  const createdDays = [];
+  const programs = [];
 
   for (const day of draft.days) {
-    const dayProgram = day.name === draft.days[0].name
-      ? program
-      : await createProgram(input.userId, day.name, `${draft.description} — ${day.name}`);
+    const program = await createProgram(input.userId, day.name, `${draft.description} — ${day.name}`);
     for (const exercise of day.exercises) {
-      await addExerciseToProgram(dayProgram.id, exercise.exerciseId, exercise.sets, exercise.minReps, exercise.maxReps, exercise.restSeconds);
+      await addExerciseToProgram(program.id, exercise.exerciseId, exercise.sets, exercise.minReps, exercise.maxReps, exercise.restSeconds);
     }
-    createdDays.push({ id: dayProgram.id, name: dayProgram.name });
+    programs.push({ id: program.id, name: program.name });
   }
 
-  return { draft, programs: createdDays };
+  return { draft, programs };
 }
