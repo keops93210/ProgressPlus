@@ -68,8 +68,8 @@ function equipmentAllowed(exercise: Exercise, equipment?: string[]) {
   return !actual || wanted.some((item) => actual.includes(item) || item.includes(actual));
 }
 
-function scoreExercise(exercise: Exercise, preferredMuscles: string[], level: ProgramLevel, used: Set<string>) {
-  if (used.has(exercise.id)) return -1000;
+function scoreExercise(exercise: Exercise, preferredMuscles: string[], level: ProgramLevel, usedToday: Set<string>) {
+  if (usedToday.has(exercise.id)) return -1000;
   let score = 0;
   const muscleIndex = preferredMuscles.findIndex((muscle) => matchesMuscle(exercise, muscle));
   if (muscleIndex >= 0) score += 100 - muscleIndex * 8;
@@ -117,10 +117,10 @@ export async function buildAdaptiveProgram(input: AdaptiveProgramInput): Promise
 
   const config = settings(input.goal, input.level);
   const split = SPLITS[input.daysPerWeek] ?? SPLITS[3];
-  const used = new Set<string>();
-  const maxExercises = input.sessionMinutes === 45 ? 5 : 7;
+  const maxExercises = input.sessionMinutes === 45 ? 5 : input.sessionMinutes === 60 ? 6 : 7;
 
   const days = split.map((parts, index) => {
+    const usedToday = new Set<string>();
     const preferred = parts.flatMap(splitMuscles);
     const fallback = preferences(input.goal, input.level);
     const pool = [...preferred, ...fallback.filter((muscle) => !preferred.includes(muscle))];
@@ -129,11 +129,11 @@ export async function buildAdaptiveProgram(input: AdaptiveProgramInput): Promise
     for (const muscle of pool) {
       const candidates = exercises
         .filter((exercise) => matchesMuscle(exercise, muscle))
-        .sort((a, b) => scoreExercise(b, pool, input.level, used) - scoreExercise(a, pool, input.level, used));
-      const candidate = candidates.find((exercise) => !used.has(exercise.id));
+        .sort((a, b) => scoreExercise(b, pool, input.level, usedToday) - scoreExercise(a, pool, input.level, usedToday));
+      const candidate = candidates.find((exercise) => !usedToday.has(exercise.id));
       if (candidate) {
         selected.push(candidate);
-        used.add(candidate.id);
+        usedToday.add(candidate.id);
       }
       if (selected.length >= maxExercises) break;
     }
@@ -153,7 +153,7 @@ export async function buildAdaptiveProgram(input: AdaptiveProgramInput): Promise
 
   return {
     name: `Progress+ ${input.goal === "strength" ? "Force" : input.goal === "fat_loss" ? "Sèche" : "Hypertrophie"} ${input.daysPerWeek} jours`,
-    description: `Programme adaptatif généré selon ${input.daysPerWeek} jours/semaine, objectif ${input.goal}, niveau ${input.level}. Progress+ pourra ensuite ajuster les charges selon tes performances et ta récupération.`,
+    description: `Programme adaptatif généré selon ${input.daysPerWeek} jours/semaine, objectif ${input.goal}, niveau ${input.level}. Progress+ ajustera ensuite la charge et le volume selon les performances et la récupération.`,
     days,
   };
 }
@@ -163,11 +163,6 @@ function splitName(split: string, index: number) {
   return `${names[split] ?? "Séance"} ${index + 1}`;
 }
 
-/**
- * Persists the generated sessions using the current data model, where each
- * workout program is a standalone routine. A future program-plan table can
- * group these routines without changing the generator itself.
- */
 export async function createAdaptiveProgramPack(input: AdaptiveProgramInput) {
   const draft = await buildAdaptiveProgram(input);
   const programs = [];
