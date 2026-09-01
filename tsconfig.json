@@ -13,5 +13,10 @@
     "**/*.tsx",
     ".expo/types/**/*.ts",
     "expo-env.d.ts"
+  ],
+  "exclude": [
+    "app/(app)/home-v03-premium.tsx",
+    "app/(app)/home-v04-premium.tsx",
+    "app/(app)/home-v05-premium.tsx"
   ]
 }

@@ -14,6 +14,7 @@ export default function AppLayout() {
       <Tabs.Screen name="program" options={{ href: null }} />
       <Tabs.Screen name="workout-session" options={{ href: null }} />
       <Tabs.Screen name="workout-tools" options={{ href: null }} />
+      <Tabs.Screen name="program-generator" options={{ href: null }} />
       <Tabs.Screen name="exercise" options={{ href: null }} />
       <Tabs.Screen name="exercise/[id]" options={{ href: null }} />
       <Tabs.Screen name="exercise-detail" options={{ href: null }} />
